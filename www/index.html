@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+	<link rel="stylesheet" type="text/css" href="style.css"/>
+	<script type="text/javascript" src="logic.js"></script>
+	<title>Tests</title>
+</head>
+<body>
+	<div id="header">Zinc Test Page</div>
+	<div id="content">
+		<h1>Test</h1>
+		<p><img class="logo" src="logo.png" align="right"/>This is a simple test page for Zinc. It contains HTML, CSS, JavaScript, a custom font and an image. It is also an entry point to test CGI scripts. Just select which language to use to process the request and submit one of the forms below.</p>
+		<form action="">
+		  <input type="radio" name="lang" id="radio_php"> PHP<br>
+		  <input type="radio" name="lang" id="radio_python"> Python<br>
+		</form>
+		<h2>Simple form</h2>
+		<form action="" method="post" id="simple_form" enctype="multipart/form-data">
+			<fieldset>
+				<div><label for="name">Name:</label><input class="box" type="text" id="name" name="name" value="John Smith"></div>
+				<div><label for="email">E-mail:</label><input class="box" type="email" id="email" name="email" value="john.smith@example.com"></div>
+				<div><label for="message">Message:</label><textarea class="box" id="message" name="message">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</textarea></div>
+				<div><input type="submit" value="Send"/></div>
+			</fieldset>
+		</form>
+		<h2>Upload file form</h2>
+		<form action="" method="post" id="upload_form" enctype="multipart/form-data">
+			<fieldset>
+				<div><input type="file" name="filename" id="filename" style="margin-bottom: 15px;"/></div>
+				<div><input type="submit" value="Upload"/></div>
+			</fieldset>
+		</form>
+	</div>
+</body>
+</html>

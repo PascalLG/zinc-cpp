@@ -1,0 +1,86 @@
+@font-face {
+  font-family: "Titillium Web";
+  src: url("/__zinc__/TitilliumWeb-Regular.ttf") format("truetype");
+}
+
+body, html {
+	background-color: #fff;
+	font-family: "Titillium Web", Helvetica, Arial, sans-serif;
+	margin: 0;
+	padding: 0;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+#header {
+	padding: 10px 20px;
+	font-style: italic;
+	font-size: 1.7em;
+	background-color: #206676;
+	color: #fff;
+}
+
+#content {
+	padding: 20px;
+}
+
+#content a {
+	color: #206676;
+}
+
+fieldset {
+	border: 1px solid #206676;
+	width: 500px;
+	padding: 10px;
+	margin: 0;
+}
+
+label {
+	display: block;
+	padding: 0;
+}
+
+.logo {
+	width: 140px;
+	height: 140px;
+}
+
+.box {
+	width: 480px;
+	height: 1.5em;
+	margin-bottom: 15px;
+}
+
+textarea.box {
+	height: 100px;
+}
+
+input[type=submit] {
+	background-color: #6FB1C0;
+	color: #fff;
+	border: none;
+	width: 100px;
+	height: 2em;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table, th, td {
+	border: 1px solid #ddd;
+}
+
+th {
+  background-color: #6FB1C0;
+  color: white;
+}
+th, td {
+	padding: 2px 8px;
+}
