@@ -45,7 +45,7 @@ What it will *never* implement:
 
 ## Installation and usage
 
-Download the executable file for your plateform and copy it in a folder where your shell can find it. On most Linux and macOS systems, `/usr/local/bin` or `/usr/bin` will do. You can also put it elsewhere (for example on a USB stick) but you'll have to type the full path to  launch it. If necessary, ensure everybody has execute permission on the file. Then:
+Download the executable file for your plateform, rename it to `zinc` and copy it in a folder where your shell can find it. On most Linux and macOS systems, `/usr/local/bin` or `/usr/bin` will do. You can also put it elsewhere (for example on a USB stick) but you'll have to type the full path to  launch it. If necessary, ensure everybody has execute permission on the file. Then:
 
 * open a terminal
 * cd to the root folder of the site you want to serve
