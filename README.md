@@ -2,7 +2,7 @@
 
 Oh no! Another web server…
 
-So, what's the point? This one is designed to be small and portable. It requires no installation and no configuration. It can even run from a USB stick. Just start it from the command line in the root folder of your web site, et voilà! Plus, it offers logging options that prove useful when debugging a web service.
+So, what's the point? This one is designed to be small and portable. It requires no installation and no configuration. It can even run from a USB stick. Just start it from the command line in the root folder of your web site, et voilà! Plus, it offers logging options that prove useful when debugging a web service. Its architecture also allows for easy reuse of the HTTP layer in another application.
 
 Typical use cases for `zinc` are when you need to prototype a small site locally, or when you want to share a folder on your intranet, and don't want (or can't) install a full Apache/PHP stack.
 
@@ -86,7 +86,7 @@ The simplest way of creating a `zinc.ini` file is to launch the server with the 
 ```
 [Server]
 Listen = 8080
-LimitThreads = 4
+LimitThreads = 8
 LimitRequestLine = 2048
 LimitRequestHeaders = 8192
 LimitRequestBody = 33554432
@@ -157,11 +157,24 @@ Zinc is a C++14 cmake based project. To build it, you need `cmake` version 3.9+,
 
 * Clone the repository on your local computer: `git clone https://github.com/PascalLG/zinc-cpp.git`
 * Move to the folder `git` just created: `cd zinc-cpp`
+* If necessary, adjust the options at the beginning of the ``CMakeLists.txt`` file (see below)
 * Create a build directory and jump into it: `mkdir build && cd build`
 * Configure the project for a release build: `cmake -DCMAKE_BUILD_TYPE=Release ..` You need network connectivity at this point, as this downloads a few external libraries from GitHub.
 * Build the project: `make`
 
 If the build is successful, you end up with two executable files in the build folder. The `zinc` file is the server itself, while the `ut` file is a command line application that runs unit test suites on various parts of the server code.
+
+At the beginning of the main ``CMakeLists.txt`` file, you'll find some options to fine-tune your server:
+
+Option                    | Values      | Description
+--------------------------|-------------|------------
+ZINC_VERSION_MAJOR        | any integer | Version major number
+ZINC_VERSION_MINOR        | any integer | Version minor number
+ZINC_COMPRESSION_GZIP     | ON or OFF   | Enable/disable gzip compression
+ZINC_COMPRESSION_DEFLATE  | ON or OFF   | Enable/disable deflate compression
+ZINC_COMPRESSION_BROTLI   | ON or OFF   | Enable/disable brotli compression
+
+When a compression scheme is enabled, the corresponding library is automatically downloaded from GitHub, built, and statically linked with the server code.
 
 The `www` folder contains a test web site, with scripts to process forms in PHP and Python. For easy testing, just symlink it from your build folder: `ln -s ../www www`, launch `zinc` and go to `http://127.0.0.1:8080/www/` in your browser.
 

@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
+#include "zinc.h"
 #include "resource_page_error.h"
-#include "misc.h"
 #include "resource_error_page.h"
 
 //========================================================================
@@ -53,14 +53,20 @@ void ResourceErrorPage::transmit(HttpResponse & response, HttpRequest const & re
 
     response.emitPage(reinterpret_cast<char const *>(page_error_html), [&] (std::string const & field) {
         std::string ret;
-        if (!getFieldValue(ret, field, request)) {
-            if (field == "errno") {
-                ret = std::to_string(this->status_.getStatusCode());
-            } else if (field == "errmsg") {
-                ret = string::encodeHtml(this->status_.getStatusString());
-            } else if (field == "description") {
-                ret = string::encodeHtml(getErrorDescription());
-            }
+        if (field == "server_version") {
+            ret = string::encodeHtml(Zinc::getInstance().getVersionString());
+        } else if (field == "server_name") {
+            ret = string::encodeHtml(Zinc::getInstance().getConfiguration().getServerName());
+        } else if (field == "server_addr") {
+            ret = request.getLocalAddress().getAddress();
+        } else if (field == "server_port") {
+            ret = request.getLocalAddress().getPort();
+        } else if (field == "errno") {
+            ret = std::to_string(this->status_.getStatusCode());
+        } else if (field == "errmsg") {
+            ret = string::encodeHtml(this->status_.getStatusString());
+        } else if (field == "description") {
+            ret = string::encodeHtml(getErrorDescription());
         }
         return ret;
     });

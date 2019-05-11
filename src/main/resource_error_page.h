@@ -24,9 +24,8 @@
 #ifndef __RESOURCE_ERROR_PAGE_H__
 #define __RESOURCE_ERROR_PAGE_H__
 
-#include "version.h"
-#include "resource.h"
-#include "http_status.h"
+#include "../http/resource.h"
+#include "../http/http_status.h"
 
 //--------------------------------------------------------------
 // Resource consisting of an error page.
@@ -47,7 +46,11 @@ private:
         std::unordered_map<int, std::string> mapByStatus_;
     };
 
-public_for_testing:
+#ifdef UNIT_TESTING
+public:
+#else
+private:
+#endif
     std::string getErrorDescription() const;
 };
 

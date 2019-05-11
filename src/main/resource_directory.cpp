@@ -24,9 +24,8 @@
 #include <cassert>
 #include <algorithm>
 
+#include "zinc.h"
 #include "resource_page_directory.h"
-#include "misc.h"
-#include "filesys.h"
 #include "resource_directory.h"
 
 //========================================================================
@@ -113,62 +112,66 @@ void ResourceDirectory::transmit(HttpResponse & response, HttpRequest const & re
 
     response.emitPage(reinterpret_cast<char const *>(page_directory_html), [&] (std::string const & field) {
         std::string ret;
-        if (!getFieldValue(ret, field, request)) {
-            if (field == "folder") {
-            	ret = string::encodeHtml(this->uri_);
-    		} else if (field == "content") {
-                std::vector<fs::dirent> list;
-                fs::makeFilepathFromURI(this->uri_).getDirectoryContent([&] (fs::dirent const & entry) {
-                    if (!entry.getName().empty() && entry.getName().front() != '.') {
-                        list.push_back(entry);
-                    }
-                });
-                std::sort(list.begin(), list.end(), orderDescription[order].compare);
+        if (field == "server_version") {
+            ret = string::encodeHtml(Zinc::getInstance().getVersionString());
+        } else if (field == "server_name") {
+            ret = string::encodeHtml(Zinc::getInstance().getConfiguration().getServerName());
+        } else if (field == "server_addr") {
+            ret = request.getLocalAddress().getAddress();
+        } else if (field == "server_port") {
+            ret = request.getLocalAddress().getPort();
+        } else if (field == "folder") {
+        	ret = string::encodeHtml(this->uri_);
+		} else if (field == "content") {
+            std::vector<fs::dirent> list;
+            fs::makeFilepathFromURI(this->uri_).getDirectoryContent([&] (fs::dirent const & entry) {
+                list.push_back(entry);
+            });
+            std::sort(list.begin(), list.end(), orderDescription[order].compare);
 
-                std::string root = this->uri_;
-                if (root.length() > 1) {
-                    root.push_back('/');
+            std::string root = this->uri_;
+            if (root.length() > 1) {
+                root.push_back('/');
+            }
+
+            ret.reserve(1000 + 200 * list.size());
+            ret += "<tr>";
+            for (size_t i = 0; i < 3; i++) {
+                ret += i ? "<th>" : "<th colspan=\"2\">";
+                ret += "<a href=\"" + string::encodeHtml(root) + "?S=" + static_cast<char>(orderDescription[order].fields[i].link) + "\">" + columnNames[i] + "</a>";
+                if (orderDescription[order].fields[i].arrow < 0) {
+                    ret += " <img src=\"/__zinc__/arrow_down.png\" class=\"sort\" alt=\"sort descending\"/>";
+                } else if (orderDescription[order].fields[i].arrow > 0) {
+                    ret += " <img src=\"/__zinc__/arrow_up.png\" class=\"sort\" alt=\"sort ascending\"/>";
                 }
+                ret += "</th>";
+            }
+            ret += "</tr>\n";
 
-                ret.reserve(1000 + 200 * list.size());
+            if (root.length() > 1) {
                 ret += "<tr>";
-                for (size_t i = 0; i < 3; i++) {
-                    ret += i ? "<th>" : "<th colspan=\"2\">";
-                    ret += "<a href=\"" + string::encodeHtml(root) + "?S=" + static_cast<char>(orderDescription[order].fields[i].link) + "\">" + columnNames[i] + "</a>";
-                    if (orderDescription[order].fields[i].arrow < 0) {
-                        ret += " <img src=\"/__zinc__/arrow_down.png\" class=\"sort\" alt=\"sort descending\"/>";
-                    } else if (orderDescription[order].fields[i].arrow > 0) {
-                        ret += " <img src=\"/__zinc__/arrow_up.png\" class=\"sort\" alt=\"sort ascending\"/>";
-                    }
-                    ret += "</th>";
-                }
+                ret += "<td><img src=\"/__zinc__/back.png\" alt=\"folder icon\"/></td>";
+                ret += "<td><a href=\"" + string::encodeHtml(root.substr(0, root.rfind('/', root.length() - 2) + 1)) + "\">Parent directory</a></td>";
+                ret += "<td>&nbsp;</td>";
+                ret += "<td>&nbsp;</td>";
                 ret += "</tr>\n";
+            }
 
-                if (root.length() > 1) {
-                    ret += "<tr>";
-                    ret += "<td><img src=\"/__zinc__/back.png\" alt=\"folder icon\"/></td>";
-                    ret += "<td><a href=\"" + string::encodeHtml(root.substr(0, root.rfind('/', root.length() - 2) + 1)) + "\">Parent directory</a></td>";
-                    ret += "<td>&nbsp;</td>";
-                    ret += "<td>&nbsp;</td>";
-                    ret += "</tr>\n";
+            for (fs::dirent & entry: list) {
+                ret += "<tr>";
+                std::string link = root + entry.getName(), size;
+                if (entry.getFileType() == fs::directory) {
+                    ret += "<td class=\"col-icon\"><img src=\"/__zinc__/folder.png\" alt=\"folder icon\"/></td>";
+                    link.push_back('/');
+                    size = "&nbsp;";
+                } else {
+                    ret += "<td class=\"col-icon\"><img src=\"/__zinc__/document.png\" alt=\"document icon\"/></td>";
+                    size = std::to_string(entry.getSize());
                 }
-
-                for (fs::dirent & entry: list) {
-                    ret += "<tr>";
-                    std::string link = root + entry.getName(), size;
-                    if (entry.getFileType() == fs::directory) {
-                        ret += "<td class=\"col-icon\"><img src=\"/__zinc__/folder.png\" alt=\"folder icon\"/></td>";
-                        link.push_back('/');
-                        size = "&nbsp;";
-                    } else {
-                        ret += "<td class=\"col-icon\"><img src=\"/__zinc__/document.png\" alt=\"document icon\"/></td>";
-                        size = std::to_string(entry.getSize());
-                    }
-                    ret += "<td class=\"col-name\"><a href=\"" + string::encodeHtml(link) + "\">" + string::encodeHtml(entry.getName()) + "</a></td>";
-                    ret += "<td class=\"col-modif\">" + string::encodeHtml(formatModificationDate(entry)) + "</td>";
-                    ret += "<td class=\"col-size\">" + size + "</td>";
-                    ret += "</tr>\n";
-                }
+                ret += "<td class=\"col-name\"><a href=\"" + string::encodeHtml(link) + "\">" + string::encodeHtml(entry.getName()) + "</a></td>";
+                ret += "<td class=\"col-modif\">" + string::encodeHtml(formatModificationDate(entry)) + "</td>";
+                ret += "<td class=\"col-size\">" + size + "</td>";
+                ret += "</tr>\n";
             }
         }
         return ret;

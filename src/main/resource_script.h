@@ -24,11 +24,9 @@
 #ifndef __RESOURCE_SCRIPT_H__
 #define __RESOURCE_SCRIPT_H__
 
-#include "version.h"
-#include "config.h"
-#include "filesys.h"
-#include "resource.h"
-#include "http_request.h"
+#include "../misc/filesys.h"
+#include "../http/resource.h"
+#include "configuration.h"
 
 //--------------------------------------------------------------
 // Resource consisting of a CGI script.
@@ -49,7 +47,11 @@ private:
 
     bool runScript(HttpResponse & response, fs::tmpfile const & body, char const ** args, char const ** env);
 
-public_for_testing:
+#ifdef UNIT_TESTING
+public:
+#else
+private:
+#endif
     std::vector<std::string>    buildArguments() const;
     std::vector<std::string>    buildEnvironment(HttpRequest const & request) const;
 };

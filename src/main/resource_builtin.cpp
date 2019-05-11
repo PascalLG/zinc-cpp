@@ -29,9 +29,8 @@
 #include "resource_style.h"
 #include "resource_titilliumweb.h"
 
+#include "../http/mimetype.h"
 #include "version.h"
-#include "logger.h"
-#include "mimetype.h"
 #include "resource_builtin.h"
 
 //========================================================================
@@ -76,10 +75,10 @@ std::shared_ptr<Resource> ResourceBuiltIn::resolve(std::string const & uri) {
 //--------------------------------------------------------------
 
 void ResourceBuiltIn::transmit(HttpResponse & response, HttpRequest const & request) {
-    static date lastModified = date(APP_BUILD_TIMESTAMP);
+    static date lastModified = date(ZINC_BUILD_TIMESTAMP);
 
     date ifModifiedSince = date::from_http(request.getHeaderValue(HttpHeader::IfModifiedSince));
-    if (lastModified > ifModifiedSince && request.getVerb().isOneOf(HttpVerb::GET | HttpVerb::HEAD)) {
+    if (lastModified > ifModifiedSince && request.getVerb().isOneOf(HttpVerb::Get | HttpVerb::Head)) {
         response.emitHeader(HttpHeader::ContentType, getMimeType(resource_, nullptr));
         response.emitHeader(HttpHeader::ContentLength, std::to_string(length_));
         response.emitHeader(HttpHeader::LastModified, lastModified.to_http());

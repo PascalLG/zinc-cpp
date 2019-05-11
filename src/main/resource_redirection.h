@@ -24,9 +24,8 @@
 #ifndef __RESOURCE_REDIRECTION_H__
 #define __RESOURCE_REDIRECTION_H__
 
-#include "version.h"
-#include "resource.h"
-#include "http_status.h"
+#include "../http/resource.h"
+#include "../http/http_status.h"
 
 //--------------------------------------------------------------
 // Resource consisting of a redirection page.
@@ -42,7 +41,11 @@ private:
     std::string location_;
     bool        permanent_;
 
-public_for_testing:
+#ifdef UNIT_TESTING
+public:
+#else
+private:
+#endif
     HttpStatus  getRedirectionStatus(HttpRequest const & request);
     std::string getAbsoluteLocation(HttpRequest const & request);
 };

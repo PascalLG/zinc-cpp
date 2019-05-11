@@ -24,8 +24,8 @@
 #ifndef __RESOURCE_BUILTIN_H__
 #define __RESOURCE_BUILTIN_H__
 
-#include "filesys.h"
-#include "resource.h"
+#include "../misc/filesys.h"
+#include "../http/resource.h"
 
 //--------------------------------------------------------------
 // Resource consisting of a built-in image.

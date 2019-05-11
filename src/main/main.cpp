@@ -22,17 +22,17 @@
 //========================================================================
 
 #include <csignal>
-#include <cstring>
 #include <string>
 #include <iostream>
 
-#include "version.h"
-#include "logger.h"
-#include "config.h"
-#include "http_server.h"
+#include "../misc/portability.h"
+#include "../misc/logger.h"
+#include "../http/http_server.h"
+#include "zinc.h"
 
 static std::unique_ptr<HttpServer>  server;                     // the actual server instance
 static fs::filepath                 configFile  = "zinc.ini";   // name of the configuration file
+
 #ifdef _WIN32
 static char const                   optChar     = '/';          // Command line option delimiter for Win32
 #else
@@ -73,7 +73,7 @@ int main(int argc, char ** argv) {
 
     // Initialisation.
 
-    tzset();
+    tzset_();
     ansi::setEnabled(true);
     logger::registerWorkerThread(0);
 
@@ -146,15 +146,19 @@ int main(int argc, char ** argv) {
 
     // Handle configuration.
 
-    Configuration & configuration = Configuration::getInstance();
+    Zinc & zinc = Zinc::getInstance();
+    Configuration & configuration = zinc.getConfiguration();
+
     if (!ignoreconf) {
         if (!configuration.load(configFile)) {
             return EXIT_FAILURE;
         }
     }
+
     if (port > 0) {
         configuration.setListeningPort(port);
     }
+
     if (genconf) {
         bool ok = configuration.save(configFile);
         if (ok) {
@@ -169,7 +173,7 @@ int main(int argc, char ** argv) {
     // Display banner and configuation information.
 
     if (!quiet) {
-        std::cout << getVersionString() << " - Personal Web Server" << std::endl
+        std::cout << zinc.getVersionString() << " - Personal Web Server" << std::endl
                   << "(c) 2019 - Æquans" << std::endl
                   << std::endl
                   << "Configuration:" << std::endl;
@@ -178,15 +182,15 @@ int main(int argc, char ** argv) {
     }
 
     // Install handlers.
-
+#ifndef _WIN32
     signal(SIGINT,  handleTerminate);   // Ctrl+C
     signal(SIGHUP,  handleTerminate);   // console is closed
     signal(SIGTERM, handleTerminate);   // request for termination
     signal(SIGPIPE, SIG_IGN);           // ignore broken sockets
-
+#endif
     // Instantiate and start the server.
 
-    server = std::make_unique<HttpServer>();
+    server = std::make_unique<HttpServer>(zinc);
     int status = server->startup();
     server.reset();
 

@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#include "config.h"
-#include "mimetype.h"
+#include "../http/mimetype.h"
+#include "zinc.h"
 #include "resource_static_file.h"
 
 //========================================================================
@@ -51,22 +51,23 @@ ResourceStaticFile::ResourceStaticFile(fs::filepath const & filename, std::ifstr
 
 void ResourceStaticFile::transmit(HttpResponse & response, HttpRequest const & request) {
     date ifModifiedSince = date::from_http(request.getHeaderValue(HttpHeader::IfModifiedSince));
-    if (lastModified_ > ifModifiedSince && request.getVerb().isOneOf(HttpVerb::GET | HttpVerb::HEAD)) {
-        fileStream_.clear();
+    if (lastModified_ > ifModifiedSince && request.getVerb().isOneOf(HttpVerb::Get | HttpVerb::Head)) {
         fileStream_.seekg(0, fileStream_.end);
-        long size = fileStream_.tellg();
+        size_t size = static_cast<size_t>(fileStream_.tellg());
 
         response.emitHeader(HttpHeader::ContentType, mimeType_);
         response.emitHeader(HttpHeader::ContentLength, std::to_string(size));
         response.emitHeader(HttpHeader::LastModified, lastModified_.to_http());
-        response.emitHeader(HttpHeader::Expires, response.getResponseDate().add(Configuration::getInstance().getExpires()).to_http());
+        response.emitHeader(HttpHeader::Expires, response.getResponseDate().add(Zinc::getInstance().getConfiguration().getExpires()).to_http());
         response.emitEol();
 
         fileStream_.seekg(0, fileStream_.beg);
-        while (fileStream_.good()) {
+        while (size) {
             char buffer[1024];
-            fileStream_.read(buffer, sizeof(buffer));
-            response.write(buffer, fileStream_.gcount());
+            size_t count = std::min(size, sizeof(buffer));
+            fileStream_.read(buffer, count);
+            response.write(buffer, count);
+            size -= count;
         }
     } else {
         response.setHttpStatus(304);

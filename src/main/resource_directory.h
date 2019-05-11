@@ -26,8 +26,7 @@
 
 #include <unordered_map>
 
-#include "filesys.h"
-#include "resource.h"
+#include "../http/resource.h"
 
 //--------------------------------------------------------------
 // Resource consisting of a directory listing.

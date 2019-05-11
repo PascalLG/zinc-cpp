@@ -24,28 +24,16 @@
 #ifndef __VERSION_H__
 #define __VERSION_H__
 
-#include <string>
-
 //--------------------------------------------------------------
-// Version number.
-//--------------------------------------------------------------
-
-#define APP_VERSION_MAJOR       @APP_VERSION_MAJOR@
-#define APP_VERSION_MINOR       @APP_VERSION_MINOR@
-#define APP_PLATEFORM_NAME      "@CMAKE_SYSTEM_NAME@"
-#define APP_BUILD_TIMESTAMP     @APP_BUILD_TIMESTAMP@
-
-//--------------------------------------------------------------
-// Helper macros and functions.
+// Version number and other build information. This file is
+// preprocessed by cmake to write actual values in place of the
+// tags below.
 //--------------------------------------------------------------
 
-#if UNIT_TESTING
-#define public_for_testing  public
-#else
-#define public_for_testing  private
-#endif
-
-std::string getVersionString();
+#define ZINC_VERSION_MAJOR       @ZINC_VERSION_MAJOR@
+#define ZINC_VERSION_MINOR       @ZINC_VERSION_MINOR@
+#define ZINC_PLATEFORM_NAME      "@CMAKE_SYSTEM_NAME@"
+#define ZINC_BUILD_TIMESTAMP     @ZINC_BUILD_TIMESTAMP@
 
 //--------------------------------------------------------------
 

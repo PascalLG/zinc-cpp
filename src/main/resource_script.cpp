@@ -18,16 +18,19 @@
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
+    // THE SOFTWARE.
 //========================================================================
 
+#ifndef _WIN32
 #include <unistd.h>
 #include <poll.h>
 #include <sys/wait.h>
+#endif
+#include <iostream>
 
-#include "logger.h"
-#include "version.h"
-#include "uri.h"
+#include "../misc/portability.h"
+#include "../misc/logger.h"
+#include "zinc.h"
 #include "resource_script.h"
 
 //========================================================================
@@ -62,17 +65,16 @@ void ResourceScript::transmit(HttpResponse & response, HttpRequest const & reque
     std::vector<std::string> args = buildArguments();
     std::vector<std::string> env = buildEnvironment(request);
 
-    size_t n = 0;
-    char const * buffer[args.size() + env.size() + 2];
+    std::vector<char const *> buffer;
     for (std::string const & x: args) {
-        buffer[n++] = x.c_str();
+        buffer.push_back(x.c_str());
     }
-    buffer[n++] = nullptr;
-    size_t nenv = n;
+    buffer.push_back(nullptr);
+    size_t nenv = buffer.size();
     for (std::string const & x: env) {
-        buffer[n++] = x.c_str();
+        buffer.push_back(x.c_str());
     }
-    buffer[n++] = nullptr;
+    buffer.push_back(nullptr);
 
     response.emitHeader(HttpHeader::ContentType, "text/plain; charset=utf-8");  // default, should be overriden by the script itself
     response.emitHeader(HttpHeader::LastModified, response.getResponseDate().to_http());
@@ -80,7 +82,8 @@ void ResourceScript::transmit(HttpResponse & response, HttpRequest const & reque
     response.emitHeader(HttpHeader::CacheControl, "no-cache, no-store, must-revalidate");
     response.emitHeader(HttpHeader::Pragma, "no-cache");
 
-    if (!runScript(response, request.getBody(), buffer, buffer + nenv)) {
+    char const ** ptr = buffer.data();
+    if (!runScript(response, request.getBody(), ptr, ptr + nenv)) {
         LOG_ERROR("Fork of " << cgi_.getInterpreter() << " failed.");
         response.emitEol();
         response.emitPage("Not enough resources to fork interpreter.");
@@ -114,7 +117,7 @@ std::vector<std::string> ResourceScript::buildArguments() const {
         switch (ch) {
         case 'a':   return '\a';
         case 'b':   return '\b';
-        case 'e':   return '\e';
+        case 'e':   return '\x1B';
         case 'f':   return '\f';
         case 'n':   return '\n';
         case 'r':   return '\r';
@@ -240,7 +243,7 @@ std::vector<std::string> ResourceScript::buildEnvironment(HttpRequest const & re
 
     // Add all the standard CGI variables.
 
-    Configuration const & configuration = Configuration::getInstance();
+    Configuration const & configuration = Zinc::getInstance().getConfiguration();
     fs::filepath root = fs::getCurrentDirectory();
 
     add("DOCUMENT_ROOT",        true,   root.getStdString());
@@ -269,7 +272,7 @@ std::vector<std::string> ResourceScript::buildEnvironment(HttpRequest const & re
     add("SERVER_NAME",          false,  configuration.getServerName());
     add("SERVER_PORT",          false,  request.getLocalAddress().getPort());
     add("SERVER_PROTOCOL",      true,   "HTTP/1.1");
-    add("SERVER_SOFTWARE",      true,   getVersionString());
+    add("SERVER_SOFTWARE",      true,   Zinc::getInstance().getVersionString());
 
     size_t sep = scripturi_.rfind('/');
     std::string tmp = (sep != std::string::npos) ? scripturi_.substr(0, sep) : scripturi_;
@@ -300,6 +303,9 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
         LOG_TRACE("execve env: " << env[i]);
     }
 
+#ifdef _WIN32
+
+#else
     // Create pipes to redirect the interpreter standard and
     // error outputs, then fork.
 
@@ -400,7 +406,7 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
         close(stdout[0]);
         close(stderr[0]);
     }
-
+#endif
     return true;
 }
 
