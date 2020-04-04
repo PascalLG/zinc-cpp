@@ -25,6 +25,7 @@
 #define BLOB_H
 
 #include <vector>
+#include <stdint.h>
 
 #include "portability.h"
 

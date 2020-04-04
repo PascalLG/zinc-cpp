@@ -22,6 +22,8 @@
 //========================================================================
 
 #include <array>
+#include <algorithm> 
+#include <functional>
 
 #include "prng.h"
 
