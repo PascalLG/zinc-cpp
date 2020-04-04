@@ -33,10 +33,10 @@
 TEST(Compression, getName) {
     EXPECT_EQ(getCompressionName(compression::none),            "");
 #if defined(ZINC_COMPRESSION_GZIP)
-    EXPECT_EQ(getCompressionName(compression::gzip),            "gzip");
+    EXPECT_EQ(getCompressionName(compression::zlib_gzip),       "gzip");
 #endif
 #if defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(getCompressionName(compression::deflate),         "deflate");
+    EXPECT_EQ(getCompressionName(compression::zlib_deflate),    "deflate");
 #endif
 #if defined(ZINC_COMPRESSION_BROTLI)
     EXPECT_EQ(getCompressionName(compression::brotli_generic),  "br");
@@ -53,19 +53,19 @@ TEST(Compression, parseAcceptedEncodings) {
     EXPECT_EQ(parseAcceptedEncodings(""),                   compression::set());
     EXPECT_EQ(parseAcceptedEncodings("foo"),                compression::set());
 #if defined(ZINC_COMPRESSION_GZIP)
-    EXPECT_EQ(parseAcceptedEncodings("gzip"),               compression::set({ compression::gzip }));
+    EXPECT_EQ(parseAcceptedEncodings("gzip"),               compression::set({ compression::zlib_gzip }));
 #endif
 #if defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(parseAcceptedEncodings("deflate"),            compression::set({ compression::deflate }));
+    EXPECT_EQ(parseAcceptedEncodings("deflate"),            compression::set({ compression::zlib_deflate }));
 #endif
 #if defined(ZINC_COMPRESSION_BROTLI)
     EXPECT_EQ(parseAcceptedEncodings("br"),                 compression::set({ compression::brotli_generic, compression::brotli_text, compression::brotli_font }));
 #endif
 #if defined(ZINC_COMPRESSION_GZIP) && defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(parseAcceptedEncodings("gzip,deflate"),       compression::set({ compression::gzip, compression::deflate }));
-    EXPECT_EQ(parseAcceptedEncodings("gzip, deflate"),      compression::set({ compression::gzip, compression::deflate }));
-    EXPECT_EQ(parseAcceptedEncodings("gzip, foo, deflate"), compression::set({ compression::gzip, compression::deflate }));
-    EXPECT_EQ(parseAcceptedEncodings(" gzip , deflate "),   compression::set({ compression::gzip, compression::deflate }));
+    EXPECT_EQ(parseAcceptedEncodings("gzip,deflate"),       compression::set({ compression::zlib_gzip, compression::zlib_deflate }));
+    EXPECT_EQ(parseAcceptedEncodings("gzip, deflate"),      compression::set({ compression::zlib_gzip, compression::zlib_deflate }));
+    EXPECT_EQ(parseAcceptedEncodings("gzip, foo, deflate"), compression::set({ compression::zlib_gzip, compression::zlib_deflate }));
+    EXPECT_EQ(parseAcceptedEncodings(" gzip , deflate "),   compression::set({ compression::zlib_gzip, compression::zlib_deflate }));
 #endif
 }
 
@@ -79,10 +79,10 @@ TEST(Compression, selectCompressionMode) {
     EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, br"),      "text/plain"),      compression::brotli_text);
 #endif
 #if defined(ZINC_COMPRESSION_GZIP) && defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, deflate"), "text/plain"),      compression::gzip);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, deflate"), "text/plain"),      compression::zlib_gzip);
 #endif
 #if defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("deflate"),       "text/plain"),      compression::deflate);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("deflate"),       "text/plain"),      compression::zlib_deflate);
 #endif
     EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings(""),              "text/plain"),      compression::none);
 }
@@ -99,10 +99,10 @@ TEST(Compression, makeStreamTransformer) {
     };
     logger::setLevel(logger::error, false);
 #if defined(ZINC_COMPRESSION_GZIP)
-    EXPECT_EQ(f(compression::gzip), typeid(StreamDeflate).hash_code());
+    EXPECT_EQ(f(compression::zlib_gzip), typeid(StreamDeflate).hash_code());
 #endif
 #if defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(f(compression::deflate), typeid(StreamDeflate).hash_code());
+    EXPECT_EQ(f(compression::zlib_deflate), typeid(StreamDeflate).hash_code());
 #endif
 #if defined(ZINC_COMPRESSION_BROTLI)
     EXPECT_EQ(f(compression::brotli_generic), typeid(StreamBrotli).hash_code());

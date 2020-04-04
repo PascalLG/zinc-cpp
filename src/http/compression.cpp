@@ -41,10 +41,10 @@ struct Encoding {
 
 static std::initializer_list<Encoding> const encodingTable = {
 #if defined(ZINC_COMPRESSION_GZIP)
-    { compression::gzip,            "gzip",     [] (long length) { return std::make_unique<StreamDeflate>(true); }                        },
+    { compression::zlib_gzip,       "gzip",     [] (long length) { (void)length; return std::make_unique<StreamDeflate>(true); }          },
 #endif
 #if defined(ZINC_COMPRESSION_DEFLATE)
-    { compression::deflate,         "deflate",  [] (long length) { return std::make_unique<StreamDeflate>(false); }                       },
+    { compression::zlib_deflate,    "deflate",  [] (long length) { (void)length; return std::make_unique<StreamDeflate>(false); }         },
 #endif
 #if defined(ZINC_COMPRESSION_BROTLI)
     { compression::brotli_generic,  "br",       [] (long length) { return std::make_unique<StreamBrotli>(BROTLI_MODE_GENERIC, length); }  },
@@ -97,8 +97,8 @@ compression::mode selectCompressionMode(compression::set accepted, std::string c
             std::initializer_list<compression::mode> favorites = {
                 favorite,                       // start with the favorite mode
                 compression::brotli_generic,    // then brotli
-                compression::gzip,              // then gzip
-                compression::deflate            // then end with the worst mode
+                compression::zlib_gzip,         // then gzip
+                compression::zlib_deflate       // then end with the worst mode
             };
             auto got = std::find_if(favorites.begin(), favorites.end(), [&] (compression::mode m) { return accepted.contains(m); });
             if (got != favorites.end()) {

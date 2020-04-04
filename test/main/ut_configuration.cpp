@@ -25,6 +25,8 @@
 #include "misc/string.h"
 #include "main/configuration.h"
 
+using namespace std::literals::chrono_literals;
+
 //--------------------------------------------------------------
 // Test the default values of most config parameters.
 //--------------------------------------------------------------
@@ -41,15 +43,15 @@ TEST(Config, DefaultValues) {
     };
 
     EXPECT_EQ(cfg.getListeningPort(),       8080                );
-    EXPECT_EQ(cfg.getLimitThreads(),        4                   );
+    EXPECT_EQ(cfg.getLimitThreads(),        8                   );
     EXPECT_EQ(cfg.getLimitRequestLine(),    2048                );
     EXPECT_EQ(cfg.getLimitRequestHeaders(), 8192                );
     EXPECT_EQ(cfg.getLimitRequestBody(),    32 * 1024 * 1024    );
     EXPECT_EQ(cfg.isCompressionEnabled(),   true                );
     EXPECT_EQ(cfg.getDirectoryIndexes(),    indexes             );
     EXPECT_EQ(cfg.isListingEnabled(),       true                );
-    EXPECT_EQ(cfg.getTimeout(),             30                  );
-    EXPECT_EQ(cfg.getExpires(),             3600                );
+    EXPECT_EQ(cfg.getTimeout(),             30s                 );
+    EXPECT_EQ(cfg.getExpires(),             3600s               );
 
     EXPECT_EQ(cfg.getInterpreter("foo.php")->getSectionName(),  "PHP"    );
     EXPECT_EQ(cfg.getInterpreter("foo.php7")->getSectionName(), "PHP"    );
@@ -96,7 +98,7 @@ TEST(Config, Save) {
         "###############################",
         "[Server]",
         "Listen = 8080",
-        "LimitThreads = 4",
+        "LimitThreads = 8",
         "LimitRequestLine = 2048",
         "LimitRequestHeaders = 8192",
         "LimitRequestBody = 33554432",
@@ -154,8 +156,8 @@ TEST(Config, Load) {
     EXPECT_EQ(cfg.isCompressionEnabled(),   false                                               );
     EXPECT_EQ(cfg.getDirectoryIndexes(),    std::vector<std::string>({"foo.html", "foo.foo"})   );
     EXPECT_EQ(cfg.isListingEnabled(),       false                                               );
-    EXPECT_EQ(cfg.getTimeout(),             60                                                  );
-    EXPECT_EQ(cfg.getExpires(),             7200                                                );
+    EXPECT_EQ(cfg.getTimeout(),             60s                                                 );
+    EXPECT_EQ(cfg.getExpires(),             7200s                                               );
     EXPECT_EQ(cfg.getServerAdmin(),         "admin@test.com"                                    );
     EXPECT_EQ(cfg.getServerName(),          "www.test.com"                                      );
 

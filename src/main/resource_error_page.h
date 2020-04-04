@@ -33,12 +33,12 @@
 
 class ResourceErrorPage : public Resource {
 public:
-	ResourceErrorPage(HttpStatus status);
+    ResourceErrorPage(HttpStatus status);
 
-	void transmit(HttpResponse & response, HttpRequest const & request) override;
+    void transmit(HttpResponse & response, HttpRequest const & request) override;
 
 private:
-	HttpStatus status_;
+    HttpStatus status_;
 
     class Mapping {
     public:

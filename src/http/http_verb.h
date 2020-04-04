@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __HTTP_VERB_H__
-#define __HTTP_VERB_H__
+#ifndef HTTP_VERB_H
+#define HTTP_VERB_H
 
 #include <string>
 #include <unordered_map>
@@ -46,7 +46,7 @@ public:
         Patch       = 0x0100,
     };
 
-    friend Verb operator | (Verb lhs, Verb rhs)                                         { return (Verb) ((unsigned) lhs | (unsigned) rhs);          }
+    friend Verb operator | (Verb lhs, Verb rhs)                                         { return static_cast<Verb>(static_cast<unsigned>(lhs) | static_cast<unsigned>(rhs));    }
 
     HttpVerb() : verb_(Unknown)                                                         {                                                           }
     HttpVerb(Verb verb) : verb_(verb)                                                   {                                                           }

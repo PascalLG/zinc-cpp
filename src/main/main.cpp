@@ -45,9 +45,16 @@ static char const                   optChar     = '-';          // Command line 
 // Handle interrupt and kill signals.
 //--------------------------------------------------------------
 
+#ifdef _WIN32
+static BOOL WINAPI handleTerminate(DWORD fdwCtrlType) {
+    server->stop();
+    return TRUE;
+}
+#else
 static void handleTerminate(int signal) {
     server->stop();
 }
+#endif
 
 //--------------------------------------------------------------
 // Print usage.
@@ -74,6 +81,7 @@ int main(int argc, char ** argv) {
     // Initialisation.
 
     tzset_();
+    ansi::setupConsole();
     ansi::setEnabled(true);
     logger::registerWorkerThread(0);
 
@@ -174,7 +182,7 @@ int main(int argc, char ** argv) {
 
     if (!quiet) {
         std::cout << zinc.getVersionString() << " - Personal Web Server" << std::endl
-                  << "(c) 2019 - Æquans" << std::endl
+                  << "(c) 2019-2020, Æquans" << std::endl
                   << std::endl
                   << "Configuration:" << std::endl;
 
@@ -182,12 +190,16 @@ int main(int argc, char ** argv) {
     }
 
     // Install handlers.
-#ifndef _WIN32
+
+#ifdef _WIN32
+    SetConsoleCtrlHandler(handleTerminate, TRUE);
+#else
     signal(SIGINT,  handleTerminate);   // Ctrl+C
     signal(SIGHUP,  handleTerminate);   // console is closed
     signal(SIGTERM, handleTerminate);   // request for termination
     signal(SIGPIPE, SIG_IGN);           // ignore broken sockets
 #endif
+
     // Instantiate and start the server.
 
     server = std::make_unique<HttpServer>(zinc);

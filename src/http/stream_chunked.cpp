@@ -41,9 +41,8 @@
 // Constructor.
 //--------------------------------------------------------------
 
-StreamChunked::StreamChunked(std::function<void(long)> const & emit, size_t maxlen)
-    : OutputStream(),
-      emitHeaders_(emit),
+StreamChunked::StreamChunked(std::function<void(long)> emit, size_t maxlen)
+    : emitHeaders_(std::move(emit)),
       headersSent_(false),
       currentChunk_{0},
       maxChunkLength_(maxlen),
@@ -65,8 +64,8 @@ StreamChunked::~StreamChunked() {
 // transfer begins in chunked mode.
 //--------------------------------------------------------------
 
-void StreamChunked::write(void const * data, size_t length) {
-    char const * ptr = reinterpret_cast<char const *>(data);
+bool StreamChunked::write(void const * data, size_t length) {
+    char const * ptr = static_cast<char const *>(data);
     size_t ndx = 0;
 
     while (ndx < length) {
@@ -82,6 +81,8 @@ void StreamChunked::write(void const * data, size_t length) {
         chunkLength_ += size;
         ndx += size;
     }
+
+    return true;
 }
 
 //--------------------------------------------------------------
@@ -90,17 +91,17 @@ void StreamChunked::write(void const * data, size_t length) {
 // whole buffer as a single, not-chunked transfer.
 //--------------------------------------------------------------
 
-void StreamChunked::flush() {
+bool StreamChunked::flush() {
     if (headersSent_) {
         if (chunkLength_ > 0) {
             encodeChunk();
         }
         encodeChunk(); // terminator
     } else {
-        emitHeaders_(chunkLength_);
+        emitHeaders_(static_cast<long>(chunkLength_));
         getDestination()->write(currentChunk_, chunkLength_);
     }
-    getDestination()->flush();
+    return getDestination()->flush();
 }
 
 //--------------------------------------------------------------

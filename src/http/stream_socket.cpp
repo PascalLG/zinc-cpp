@@ -22,13 +22,14 @@
 //========================================================================
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #else
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #endif
+#include <cassert>
 #include <cstring>
 #include <algorithm>
 
@@ -36,8 +37,29 @@
 #include "../misc/logger.h"
 #include "stream_socket.h"
 
+using namespace std::literals::chrono_literals;
+
+//--------------------------------------------------------------
+// Initialize the WinSock2 library.
+//--------------------------------------------------------------
+
+#ifdef _WIN32
+static bool initWinSock() {
+    static bool winsock_initialized = false;
+    if (!winsock_initialized) {
+        WSADATA wsa;
+        int res = WSAStartup(MAKEWORD(2, 2), &wsa);
+        if (res != 0) {
+            return false;
+        }
+        winsock_initialized = true;
+    }
+    return true;
+}
+#endif
+
 //========================================================================
-// AddrIn
+// AddrIPv4
 //
 // Encapsulate an internet address, i.e. an IP address and a TCP port
 // number. This class stores and expects all values in host byte order,
@@ -45,18 +67,46 @@
 //========================================================================
 
 //--------------------------------------------------------------
+// Build an address from a domain name and a port number.
+//--------------------------------------------------------------
+
+AddrIPv4::AddrIPv4(std::string const & name, int port)
+  : addr_(0),
+    port_(0) {
+
+#ifdef _WIN32
+    if (!initWinSock()) {
+        return;
+    }
+#endif
+
+    struct addrinfo hints, * res = nullptr;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo(name.c_str(), nullptr, &hints, &res) == 0) {
+        if (res != nullptr && port > 0 && port < 65536) {
+            auto ipv4 = reinterpret_cast<struct sockaddr_in *>(res->ai_addr);
+            addr_ = ntohl(ipv4->sin_addr.s_addr);
+            port_ = static_cast<uint16_t>(port);
+        }
+    }
+}
+
+//--------------------------------------------------------------
 // Return the IP address as a string.
 //--------------------------------------------------------------
 
-std::string AddrIn::getAddress() const {
+std::string AddrIPv4::getAddressString() const {
+    struct in_addr in;
+    in.s_addr = htonl(addr_);
 #ifdef _WIN32
     WCHAR addr[INET_ADDRSTRLEN];
-    struct in_addr in = { htonl(addr_) };
     InetNtopW(AF_INET, &in, addr, INET_ADDRSTRLEN);
     return WideStringToUTF8(addr);
 #else
     char addr[INET_ADDRSTRLEN];
-    struct in_addr in = { htonl(addr_) };
     inet_ntop(AF_INET, &in, addr, INET_ADDRSTRLEN);
     return std::string(addr);
 #endif
@@ -66,7 +116,7 @@ std::string AddrIn::getAddress() const {
 // Return the port number as a string.
 //--------------------------------------------------------------
 
-std::string AddrIn::getPort() const {
+std::string AddrIPv4::getPortString() const {
     return std::to_string(port_);
 }
 
@@ -74,21 +124,35 @@ std::string AddrIn::getPort() const {
 // Print the full address to an output stream.
 //--------------------------------------------------------------
 
-std::ostream & operator << (std::ostream & os, AddrIn const & rhs) {
-    return os << rhs.getAddress() << ':' << rhs.getPort();
+std::ostream & operator << (std::ostream & os, AddrIPv4 const & rhs) {
+    return os << rhs.getAddressString() << ':' << rhs.getPortString();
 }
 
 //--------------------------------------------------------------
 // Retrieve the name from an IP address. (See below.)
 //--------------------------------------------------------------
 
-std::string AddrIn::getNameInfo() const {
-    static AddrIn::Resolver resolver; // Thread-safe as of C++11
+std::string AddrIPv4::getNameInfo() const {
+    static AddrIPv4::Resolver resolver; // Thread-safe as of C++11
     return resolver.resolve(*this);
 }
 
+//--------------------------------------------------------------
+// Initialize a sockaddr struct with this address.
+//--------------------------------------------------------------
+
+void AddrIPv4::fillAddrIn(void * addr, size_t length) const {
+    assert(length >= sizeof(struct sockaddr_in));
+    memset(addr, 0, length);
+
+    auto addrin = static_cast<struct sockaddr_in *>(addr);
+    addrin->sin_family = AF_INET;
+    addrin->sin_addr.s_addr = htonl(addr_);
+    addrin->sin_port = htons(port_);
+}
+
 //========================================================================
-// AddrIn::Resolver
+// AddrIPv4::Resolver
 //
 // Helper object to perform thread-safe calls to getnameinfo(). We need
 // to implement this pattern because despite POSIX requiring that this
@@ -96,24 +160,16 @@ std::string AddrIn::getNameInfo() const {
 //========================================================================
 
 //--------------------------------------------------------------
-// Constructor.
-//--------------------------------------------------------------
-
-AddrIn::Resolver::Resolver()
-  : mutex_() {
-}
-
-//--------------------------------------------------------------
 // Does the actual name lookup.
 //--------------------------------------------------------------
 
-std::string AddrIn::Resolver::resolve(AddrIn const & addr) {
+std::string AddrIPv4::Resolver::resolve(AddrIPv4 const & addr) {
     std::unique_lock<std::mutex> lock(mutex_);
 
     struct sockaddr_in sa;
     sa.sin_family = AF_INET;
-    sa.sin_port = htonl(addr.port_);
-    sa.sin_addr.s_addr = htons(addr.addr_);
+    sa.sin_addr.s_addr = htonl(addr.addr_);
+    sa.sin_port = htons(addr.port_);
 
     char host[1028];
     getnameinfo(reinterpret_cast<struct sockaddr *>(&sa), sizeof(sa), host, sizeof(host), nullptr, 0, 0);
@@ -135,7 +191,7 @@ std::string AddrIn::Resolver::resolve(AddrIn const & addr) {
 //--------------------------------------------------------------
 
 StreamSocket::StreamSocket()
-    : OutputStream(), socket_(INVALID_SOCKET) {
+    : socket_(INVALID_SOCKET) {
 }
 
 //--------------------------------------------------------------
@@ -143,7 +199,7 @@ StreamSocket::StreamSocket()
 //--------------------------------------------------------------
 
 StreamSocket::StreamSocket(SOCKET_T socket)
-  : OutputStream(), socket_(socket) {
+  : socket_(socket) {
     LOG_TRACE("Init socket (fd = " << socket_ << ")");
 }
 
@@ -152,7 +208,8 @@ StreamSocket::StreamSocket(SOCKET_T socket)
 //--------------------------------------------------------------
 
 StreamSocket::StreamSocket(StreamSocket && other)
-  : OutputStream(other), socket_(other.socket_) {
+  : OutputStream(other),
+    socket_(other.socket_) {
     other.socket_ = INVALID_SOCKET;
 }
 
@@ -182,6 +239,11 @@ StreamSocket & StreamSocket::operator = (StreamSocket && other) {
 //--------------------------------------------------------------
 
 bool StreamSocket::create() {
+#ifdef _WIN32
+    if (!initWinSock()) {
+        return false;
+    }
+#endif
     SOCKET_T s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (IS_SOCKET_VALID(s)) {
         int optval = 1;
@@ -198,19 +260,34 @@ bool StreamSocket::create() {
 }
 
 //--------------------------------------------------------------
+// Connect to a server at the specified address.
+//--------------------------------------------------------------
+
+bool StreamSocket::connect(AddrIPv4 const & server) {
+    if (IS_SOCKET_VALID(socket_)) {
+        struct sockaddr_in addr;
+        server.fillAddrIn(&addr, sizeof(addr));
+        if (::connect(socket_, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) >= 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+//--------------------------------------------------------------
 // Bind the socket to a port.
 //--------------------------------------------------------------
 
-bool StreamSocket::bind(uint16_t port) {
+bool StreamSocket::bind(int port) {
     bool ok = false;
 
-    if (IS_SOCKET_VALID(socket_)) {
+    if (IS_SOCKET_VALID(socket_) && port > 0 && port < 65536) {
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
 
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        addr.sin_port = htons(port);
+        addr.sin_port = htons(static_cast<uint16_t>(port));
 
         if (::bind(socket_, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) >= 0) {
             ok = true;
@@ -233,14 +310,14 @@ bool StreamSocket::listen() {
 // remote address of the socket.
 //--------------------------------------------------------------
 
-StreamSocket StreamSocket::accept(AddrIn * addr) {
+StreamSocket StreamSocket::accept(AddrIPv4 * addr) {
     if (IS_SOCKET_VALID(socket_)) {
         struct sockaddr_in remote;
         socklen_t len = sizeof(remote);
         SOCKET_T client = ::accept(socket_, reinterpret_cast<struct sockaddr *>(&remote), &len);
         if (IS_SOCKET_VALID(client)) {
             if (addr) {
-                *addr = AddrIn(ntohl(remote.sin_addr.s_addr), ntohs(remote.sin_port));
+                *addr = AddrIPv4(ntohl(remote.sin_addr.s_addr), ntohs(remote.sin_port));
             }
             return StreamSocket(client);
         }
@@ -252,13 +329,31 @@ StreamSocket StreamSocket::accept(AddrIn * addr) {
 // Return the local address of the socket.
 //--------------------------------------------------------------
 
-AddrIn StreamSocket::getLocalAddress() {
+AddrIPv4 StreamSocket::getLocalAddress() {
     struct sockaddr_in local;
     socklen_t len = sizeof(local);
     if (getsockname(socket_, reinterpret_cast<struct sockaddr *>(&local), &len) >= 0) {
-        return AddrIn(ntohl(local.sin_addr.s_addr), ntohs(local.sin_port));
+        return AddrIPv4(ntohl(local.sin_addr.s_addr), ntohs(local.sin_port));
     }
-    return AddrIn();
+    return AddrIPv4();
+}
+
+//--------------------------------------------------------------
+// Wait until data is available for reading.
+//--------------------------------------------------------------
+
+int StreamSocket::select(std::chrono::milliseconds timeout) {
+    int r = -1;
+    if (IS_SOCKET_VALID(socket_)) {
+        fd_set readfs;
+        FD_ZERO(&readfs);
+        FD_SET(socket_, &readfs);
+        struct timeval tm;
+        tm.tv_sec = static_cast<long>((timeout.count() / 1000));
+        tm.tv_usec = static_cast<long>((timeout.count() % 1000) * 1000);
+        r = ::select(static_cast<int>(socket_) + 1, &readfs, nullptr, nullptr, &tm);
+    }
+    return r;
 }
 
 //--------------------------------------------------------------
@@ -280,23 +375,15 @@ void StreamSocket::close() {
 // one byte is read.
 //--------------------------------------------------------------
 
-size_t StreamSocket::read(void * data, size_t length, int timeout, bool exact) {
+size_t StreamSocket::read(void * data, size_t length, std::chrono::milliseconds timeout, bool exact) {
     size_t count = 0;
-    while (timeout > 0 && !shutdown_) {
-        fd_set readfs;
-        FD_ZERO(&readfs);
-        FD_SET(socket_, &readfs);
-
-        struct timeval tm;
-        int delay = std::min(timeout, 500);
-        tm.tv_sec = (delay / 1000);
-        tm.tv_usec = (delay % 1000) * 1000;
-
-        int ret = select(socket_ + 1, &readfs, NULL, NULL, &tm);
+    while (timeout.count() > 0 && !shutdown_) {
+        std::chrono::milliseconds delay = std::min(timeout, 500ms);
+        int ret = select(delay);
         if (ret > 0) {
-            int r = recv(socket_, static_cast<char *>(data) + count, length - count, 0);
+            int r = recv(socket_, static_cast<char *>(data) + count, static_cast<int>(length - count), 0);
             if (r > 0) {
-                count += r;
+                count += static_cast<size_t>(r);
                 if (count >= length || !exact) {
                     return count;
                 }
@@ -315,10 +402,14 @@ size_t StreamSocket::read(void * data, size_t length, int timeout, bool exact) {
 // Write a chunk of data on the socket.
 //--------------------------------------------------------------
 
-void StreamSocket::write(void const * data, size_t length) {
+bool StreamSocket::write(void const * data, size_t length) {
     if (length > 0) {
-        send(socket_, reinterpret_cast<char const *>(data), length, 0);
+        auto count = static_cast<int>(length);
+        if (send(socket_, reinterpret_cast<char const *>(data), count, 0) != count) {
+            return false;
+        }
     }
+    return true;
 }
 
 //--------------------------------------------------------------

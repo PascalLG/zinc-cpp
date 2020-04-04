@@ -23,9 +23,10 @@
 
 #include "gtest/gtest.h"
 #include "misc/logger.h"
-#include "http/iconfig.h"
 #include "http/stream.h"
 #include "main/resource_redirection.h"
+
+using namespace std::literals::chrono_literals;
 
 //--------------------------------------------------------------
 // Helper class to read a string as a stream.
@@ -37,7 +38,7 @@ public:
         length_ = length > 0 ? length : strlen(text);
     }
 
-    size_t read(void * data, size_t length, int timeout, bool exact) {
+    size_t read(void * data, size_t length, std::chrono::milliseconds timeout, bool exact) {
         size_t count = 0;
         while (count < length && offset_ < length_) {
             static_cast<char *>(data)[count++] = text_[offset_++];
@@ -52,36 +53,15 @@ private:
 };
 
 //--------------------------------------------------------------
-// Test configuration.
-//--------------------------------------------------------------
-
-class TestConfig : public IConfig {
-public:
-    std::shared_ptr<Resource>   resolve(URI const & uri)            { return std::shared_ptr<Resource>();   }
-    std::shared_ptr<Resource>   makeErrorPage(HttpStatus status)    { return std::shared_ptr<Resource>();   }
-
-    int             getListeningPort()                              { return 8080;                          }
-    int             getLimitThreads()                               { return 4;                             }
-    int             getLimitRequestLine()                           { return 1024;                          }
-    int             getLimitRequestHeaders()                        { return 8192;                          }
-    int             getLimitRequestBody()                           { return 128*1024*1024;                 }
-    int             getTimeout()                                    { return 15;                            }
-    bool            isCompressionEnabled()                          { return true;                          }
-    std::string     getVersionString()                              { return "foo";                         }
-};
-
-
-//--------------------------------------------------------------
 // Test the getRedirectionStatus function.
 //--------------------------------------------------------------
 
 TEST(ResourceRedirection, getRedirectionStatus) {
     auto f = [] (char const * text, bool permanent) {
         InputString src(text);
-        TestConfig config;
 
-        HttpRequest req(AddrIn(), AddrIn(), false);
-        EXPECT_TRUE(req.parse(config, src).isOK());
+        HttpRequest req(AddrIPv4(), AddrIPv4(), false);
+        EXPECT_TRUE(req.parse(src, 15s, 1024, 8192, 1024 * 1024).isOK());
         return ResourceRedirection("/index.html", permanent).getRedirectionStatus(req);
     };
 
@@ -99,10 +79,9 @@ TEST(ResourceRedirection, getRedirectionStatus) {
 TEST(ResourceRedirection, getAbsoluteLocation) {
     auto f = [] (char const * text, char const * location, bool secure) {
         InputString src(text);
-        TestConfig config;
 
-        HttpRequest req(AddrIn(), AddrIn(), secure);
-        EXPECT_TRUE(req.parse(config, src).isOK());
+        HttpRequest req(AddrIPv4(), AddrIPv4(), secure);
+        EXPECT_TRUE(req.parse(src, 15s, 1024, 8192, 1024 * 1024).isOK());
         return ResourceRedirection("/index.html", false).getAbsoluteLocation(req);
     };
 

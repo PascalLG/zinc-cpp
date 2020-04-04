@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __MIMETYPE_H__
-#define __MIMETYPE_H__
+#ifndef MIMETYPE_H
+#define MIMETYPE_H
 
 #include <string>
 #include <istream>
@@ -34,8 +34,8 @@
 // MIME types related functions.
 //--------------------------------------------------------------
 
-std::string	        getMimeType(fs::filepath const & filename, std::istream * content);
-compression::mode 	getFavoriteCompressionMode(std::string const & mimetype);
+std::string         getMimeType(fs::filepath const & filename, std::istream * content);
+compression::mode   getFavoriteCompressionMode(std::string const & mimetype);
 
 //--------------------------------------------------------------
 // Text functions. (Used internally, public for unit testing.)
@@ -44,7 +44,7 @@ compression::mode 	getFavoriteCompressionMode(std::string const & mimetype);
 std::string         guessEncoding(std::istream & is);
 bool                isUTF8(char const * text, size_t length, bool * ascii);
 bool                isUTF16(char const * text, size_t length, bool bigendian);
-bool 				isValidUnicodeChar(uint32_t ch);
+bool                isValidUnicodeChar(uint32_t ch);
 
 //--------------------------------------------------------------
 

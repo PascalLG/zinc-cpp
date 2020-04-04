@@ -34,14 +34,14 @@
 
 class ResourceStaticFile : public Resource {
 public:
-	ResourceStaticFile(fs::filepath const & filename, std::ifstream & filestream);
+    ResourceStaticFile(fs::filepath const & filename, std::ifstream & filestream);
 
-	void transmit(HttpResponse & response, HttpRequest const & request) override;
+    void transmit(HttpResponse & response, HttpRequest const & request) override;
 
 private:
     std::ifstream   fileStream_;
     std::string     mimeType_;
-    date			lastModified_;
+    date            lastModified_;
 };
 
 //--------------------------------------------------------------

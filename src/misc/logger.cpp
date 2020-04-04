@@ -41,10 +41,33 @@ static std::unordered_map<std::thread::id, std::string> threadList;
 static logger::level                                    minLevel = logger::trace;
 static bool                                             dumpBodies = false;
 static bool                                             useAnsiSequences = true;
+#ifdef _WIN32
+static UINT                                             consoleMode;
+#endif
 
 //========================================================================
 // Support for ANSI sequences.
 //========================================================================
+
+//--------------------------------------------------------------
+// On Win32, setup the console to properly display UTF-8 output.
+//--------------------------------------------------------------
+
+void ansi::setupConsole() {
+#ifdef _WIN32
+    consoleMode = GetConsoleOutputCP();
+    SetConsoleOutputCP(CP_UTF8);
+    std::atexit([]() {
+        SetConsoleOutputCP(consoleMode);
+    });
+    DWORD mode;
+    HANDLE hout = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (GetConsoleMode(hout, &mode)) {
+        mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(hout, mode);
+    }
+#endif
+}
 
 //--------------------------------------------------------------
 // Enable/disable ANSI sequences in output. Note: if stdout or
@@ -110,7 +133,7 @@ void logger::print(char level, ansi::color color, std::ostringstream const & oss
 
     auto got = threadList.find(std::this_thread::get_id());
     std::cout << level << " "
-              << date::now().format("%b %d %H:%M:%S", date::local) //std::put_time(&tm, "%b %d %H:%M:%S")
+              << date::now().format("%b %d %H:%M:%S", date::local)
               << " ["
               << std::setw(4) << (got != threadList.end() ? got->second : "n/a") 
               << "] ";
@@ -149,7 +172,7 @@ logger::dump::dump(ansi::color color, char const * prefix)
 
 logger::dump::~dump() {
     if (dumpBodies && count_ > 0) {
-        emit(pending_, count_);
+        emithex(pending_, count_);
     }
 }
 
@@ -166,13 +189,13 @@ void logger::dump::write(void const * data, size_t length) {
                 memcpy(pending_ + count_, ptr, rem);
                 count_ += rem;
                 if (count_ >= sizeof(pending_)) {
-                    emit(pending_, count_);
+                    emithex(pending_, count_);
                     count_ = 0;
                 }
                 length -= rem;
                 ptr += rem;
             } else if (length >= sizeof(pending_)) {
-                emit(ptr, sizeof(pending_));
+                emithex(ptr, sizeof(pending_));
                 length -= sizeof(pending_);
                 ptr += sizeof(pending_);
             } else {
@@ -188,7 +211,7 @@ void logger::dump::write(void const * data, size_t length) {
 // Emit a dump.
 //--------------------------------------------------------------
 
-void logger::dump::emit(uint8_t const * data, size_t length) {
+void logger::dump::emithex(uint8_t const * data, size_t length) {
     std::ostringstream oss;
     oss << prefix_ << ' ';
 

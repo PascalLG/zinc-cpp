@@ -35,18 +35,26 @@ TEST(ResourceScript, buildArguments) {
         return res.buildArguments();
     };
 
-    EXPECT_EQ(f("/usr/bin/php-cgi", "", "test.php"),                std::vector<std::string>({ "php-cgi", "test.php"                        }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "-x", "test.php"),              std::vector<std::string>({ "php-cgi", "-x", "test.php"                  }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "-xy", "test.php"),             std::vector<std::string>({ "php-cgi", "-xy", "test.php"                 }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "  -xy", "test.php"),           std::vector<std::string>({ "php-cgi", "-xy", "test.php"                 }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "-xy  ", "test.php"),           std::vector<std::string>({ "php-cgi", "-xy", "test.php"                 }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "  -xy  ", "test.php"),         std::vector<std::string>({ "php-cgi", "-xy", "test.php"                 }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "-xy opt", "test.php"),         std::vector<std::string>({ "php-cgi", "-xy", "opt", "test.php"          }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "  -xy  opt  ", "test.php"),    std::vector<std::string>({ "php-cgi", "-xy", "opt", "test.php"          }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "abc\\ def", "test.php"),       std::vector<std::string>({ "php-cgi", "abc def", "test.php"             }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "abc\\\\def", "test.php"),      std::vector<std::string>({ "php-cgi", "abc\\def", "test.php"            }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "-x \"a'b c\" d", "test.php"),  std::vector<std::string>({ "php-cgi", "-x", "a'b c", "d", "test.php"    }));
-    EXPECT_EQ(f("/usr/bin/php-cgi", "-x 'a\\b c' d", "test.php"),   std::vector<std::string>({ "php-cgi", "-x", "a\\b c", "d", "test.php"   }));
+#ifdef _WIN32
+    static char const * php = "c:\\foo\\php-cgi.exe";
+    static char const * exe = php + 7;
+#else
+    static char const * php = "/usr/bin/php-cgi";
+    static char const * exe = php + 9;
+#endif
+
+    EXPECT_EQ(f(php, "", "test.php"),                std::vector<std::string>({ exe, "test.php"                        }));
+    EXPECT_EQ(f(php, "-x", "test.php"),              std::vector<std::string>({ exe, "-x", "test.php"                  }));
+    EXPECT_EQ(f(php, "-xy", "test.php"),             std::vector<std::string>({ exe, "-xy", "test.php"                 }));
+    EXPECT_EQ(f(php, "  -xy", "test.php"),           std::vector<std::string>({ exe, "-xy", "test.php"                 }));
+    EXPECT_EQ(f(php, "-xy  ", "test.php"),           std::vector<std::string>({ exe, "-xy", "test.php"                 }));
+    EXPECT_EQ(f(php, "  -xy  ", "test.php"),         std::vector<std::string>({ exe, "-xy", "test.php"                 }));
+    EXPECT_EQ(f(php, "-xy opt", "test.php"),         std::vector<std::string>({ exe, "-xy", "opt", "test.php"          }));
+    EXPECT_EQ(f(php, "  -xy  opt  ", "test.php"),    std::vector<std::string>({ exe, "-xy", "opt", "test.php"          }));
+    EXPECT_EQ(f(php, "abc\\ def", "test.php"),       std::vector<std::string>({ exe, "abc def", "test.php"             }));
+    EXPECT_EQ(f(php, "abc\\\\def", "test.php"),      std::vector<std::string>({ exe, "abc\\def", "test.php"            }));
+    EXPECT_EQ(f(php, "-x \"a'b c\" d", "test.php"),  std::vector<std::string>({ exe, "-x", "a'b c", "d", "test.php"    }));
+    EXPECT_EQ(f(php, "-x 'a\\b c' d", "test.php"),   std::vector<std::string>({ exe, "-x", "a\\b c", "d", "test.php"   }));
 }
 
 //========================================================================

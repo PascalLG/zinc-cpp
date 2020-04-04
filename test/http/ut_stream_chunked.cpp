@@ -23,48 +23,18 @@
 
 #include "gtest/gtest.h"
 #include "http/stream_chunked.h"
-
-//--------------------------------------------------------------
-// Helper class to write to a string as in a stream.
-//--------------------------------------------------------------
-
-class BinDump : public OutputStream {
-public:
-    BinDump() : OutputStream() {
-    }
-
-    void write(void const * data, size_t length) {
-        buffer_.write(reinterpret_cast<char const *>(data), length);
-    }
-
-    void emitHeaders(long length) {
-        if (length >= 0) {
-            buffer_ << "Length: " << length;
-        } else {
-            buffer_ << "Chunked";
-        }
-        buffer_ << "|";
-    }
-
-    std::string getContent() const {
-        return buffer_.str();
-    }
-
-private:
-    std::ostringstream  buffer_;
-};
-
+#include "../streams.h"
 
 //--------------------------------------------------------------
 // Test the StreamChunked class (case 1).
 //--------------------------------------------------------------
 
 TEST(StreamChunked, Case1) {
-    BinDump os;
+    HexDump os;
     StreamChunked transformer([&os](long length) { os.emitHeaders(length); }, 10);
     transformer.setDestination(&os);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "Length: 0|");
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getRawContent(), "Length: 0|");
 }
 
 //--------------------------------------------------------------
@@ -72,12 +42,12 @@ TEST(StreamChunked, Case1) {
 //--------------------------------------------------------------
 
 TEST(StreamChunked, Case2) {
-    BinDump os;
+    HexDump os;
     StreamChunked transformer([&os](long length) { os.emitHeaders(length); }, 10);
     transformer.setDestination(&os);
-    transformer.write("ABC", 3);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "Length: 3|ABC");
+    EXPECT_TRUE(transformer.write("ABC", 3));
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getRawContent(), "Length: 3|ABC");
 }
 
 //--------------------------------------------------------------
@@ -85,12 +55,12 @@ TEST(StreamChunked, Case2) {
 //--------------------------------------------------------------
 
 TEST(StreamChunked, Case3) {
-    BinDump os;
+    HexDump os;
     StreamChunked transformer([&os](long length) { os.emitHeaders(length); }, 10);
     transformer.setDestination(&os);
-    transformer.write("abcdefghij", 10);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "Length: 10|abcdefghij");
+    EXPECT_TRUE(transformer.write("abcdefghij", 10));
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getRawContent(), "Length: 10|abcdefghij");
 }
 
 //--------------------------------------------------------------
@@ -98,12 +68,12 @@ TEST(StreamChunked, Case3) {
 //--------------------------------------------------------------
 
 TEST(StreamChunked, Case4) {
-    BinDump os;
+    HexDump os;
     StreamChunked transformer([&os](long length) { os.emitHeaders(length); }, 10);
     transformer.setDestination(&os);
-    transformer.write("abcdefghijk", 11);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "Chunked|a\r\nabcdefghij\r\n1\r\nk\r\n0\r\n\r\n");
+    EXPECT_TRUE(transformer.write("abcdefghijk", 11));
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getRawContent(), "Chunked|a\r\nabcdefghij\r\n1\r\nk\r\n0\r\n\r\n");
 }
 
 //--------------------------------------------------------------
@@ -111,12 +81,12 @@ TEST(StreamChunked, Case4) {
 //--------------------------------------------------------------
 
 TEST(StreamChunked, Case5) {
-    BinDump os;
+    HexDump os;
     StreamChunked transformer([&os](long length) { os.emitHeaders(length); }, 16);
     transformer.setDestination(&os);
-    transformer.write("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 52);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "Chunked|10\r\nABCDEFGHIJKLMNOP\r\n10\r\nQRSTUVWXYZabcdef\r\n10\r\nghijklmnopqrstuv\r\n4\r\nwxyz\r\n0\r\n\r\n");
+    EXPECT_TRUE(transformer.write("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 52));
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getRawContent(), "Chunked|10\r\nABCDEFGHIJKLMNOP\r\n10\r\nQRSTUVWXYZabcdef\r\n10\r\nghijklmnopqrstuv\r\n4\r\nwxyz\r\n0\r\n\r\n");
 }
 
 //========================================================================

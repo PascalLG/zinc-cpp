@@ -23,42 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "http/stream_compress.h"
-
-//--------------------------------------------------------------
-// Helper class to write to a string as in a stream.
-//--------------------------------------------------------------
-
-#if defined(ZINC_COMPRESSION_DEFLATE) || defined(ZINC_COMPRESSION_GZIP) || defined(ZINC_COMPRESSION_BROTLI)
-
-class HexDump : public OutputStream {
-public:
-    HexDump() : OutputStream(), empty_(true) {
-    }
-
-    void write(void const * data, size_t length) {
-        unsigned char const * src = reinterpret_cast<unsigned char const *>(data);
-        while (length--) {
-            if (empty_) {
-                empty_ = false;
-            } else {
-                buffer_ << ' ';
-            }
-            char t[8];
-            sprintf(t, "%02X", static_cast<int>(*src++));
-            buffer_ << t;
-        }
-    }
-
-    std::string getContent() const {
-        return buffer_.str();
-    }
-
-private:
-    std::ostringstream  buffer_;
-    bool                empty_;
-};
-
-#endif
+#include "../streams.h"
 
 //--------------------------------------------------------------
 // Test the StreamDeflate class (deflate).
@@ -70,9 +35,9 @@ TEST(StreamDeflate, Deflate) {
     HexDump os;
     StreamDeflate transformer(false);
     transformer.setDestination(&os);
-    transformer.write("AAA", 3);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "78 DA 73 74 74 04 00 01 89 00 C4");
+    EXPECT_TRUE(transformer.write("AAA", 3));
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getHexContent(), "78 DA 73 74 74 04 00 01 89 00 C4");
 }
 
 #endif
@@ -87,12 +52,12 @@ TEST(StreamDeflate, GZip) {
     HexDump os;
     StreamDeflate transformer(true);
     transformer.setDestination(&os);
-    transformer.write("AAA", 3);
-    transformer.flush();
+    EXPECT_TRUE(transformer.write("AAA", 3));
+    EXPECT_TRUE(transformer.flush());
 
     // do not compare the 10th byte: it depends on the plateform.
-    EXPECT_EQ(os.getContent().substr(0, 26), "1F 8B 08 00 00 00 00 00 02");
-    EXPECT_EQ(os.getContent().substr(30, 39), "73 74 74 04 00 A7 31 A0 66 03 00 00 00");
+    EXPECT_EQ(os.getHexContent().substr(0, 26), "1F 8B 08 00 00 00 00 00 02");
+    EXPECT_EQ(os.getHexContent().substr(30, 39), "73 74 74 04 00 A7 31 A0 66 03 00 00 00");
 }
 
 #endif
@@ -107,9 +72,9 @@ TEST(StreamBrotli, Brotli) {
     HexDump os;
     StreamBrotli transformer(BROTLI_MODE_GENERIC, 0);
     transformer.setDestination(&os);
-    transformer.write("AAAAAAAAAA", 10);
-    transformer.flush();
-    EXPECT_EQ(os.getContent(), "8B 04 00 F8 25 82 82 84 00 C0 00");
+    EXPECT_TRUE(transformer.write("AAAAAAAAAA", 10));
+    EXPECT_TRUE(transformer.flush());
+    EXPECT_EQ(os.getHexContent(), "8B 04 00 F8 25 82 82 84 00 C0 00");
 }
 
 #endif

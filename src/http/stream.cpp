@@ -39,9 +39,9 @@
 // case of failure.
 //--------------------------------------------------------------
 
-int InputStream::readByte(int timeout) {
-	unsigned char ch;
-	return read(&ch, 1, timeout, true) == 1 ? ch : -1;
+int InputStream::readByte(std::chrono::milliseconds timeout) {
+    unsigned char ch;
+    return read(&ch, 1, timeout, true) == 1 ? ch : -1;
 }
 
 //========================================================================
@@ -61,7 +61,8 @@ int InputStream::readByte(int timeout) {
 // Flush the stream. The default implementation does nothing.
 //--------------------------------------------------------------
 
-void OutputStream::flush() {
+bool OutputStream::flush() {
+    return true;
 }
 
 //--------------------------------------------------------------
@@ -70,7 +71,7 @@ void OutputStream::flush() {
 //--------------------------------------------------------------
 
 void OutputStream::emitEol() {
-	write("\r\n", 2);
+    write("\r\n", 2);
 }
 
 //--------------------------------------------------------------
@@ -79,10 +80,10 @@ void OutputStream::emitEol() {
 
 void OutputStream::emitHeader(HttpHeader const & header, std::string const & value) {
     std::string const & key = header.getFieldName();
-	write(key.data(), key.length());
-	write(": ", 2);
-	write(value.data(), value.length());
-	emitEol();
+    write(key.data(), key.length());
+    write(": ", 2);
+    write(value.data(), value.length());
+    emitEol();
 }
 
 //--------------------------------------------------------------
@@ -101,17 +102,17 @@ void OutputStream::emitPage(char const * text) {
 // is emitted.
 //--------------------------------------------------------------
 
-void OutputStream::emitPage(char const * text, std::function<std::string(std::string const &)> const & fields) {
+void OutputStream::emitPage(char const * text, std::function<std::string(std::string const &)> fields) {
     std::unordered_map<std::string, std::string> cache;
-	for (char const * p = text; ; ) {
-		char const * q1 = strstr(p, "{{");
-		if (q1) {
-			write(p, q1 - p);
-			char const * q2 = strstr(q1 + 2, "}}");
-			if (q2) {
-                std::string fld(q1 + 2, q2 - q1 - 2);
+    for (char const * p = text; ; ) {
+        char const * q1 = strstr(p, "{{");
+        if (q1) {
+            write(p, static_cast<size_t>(q1 - p));
+            char const * q2 = strstr(q1 + 2, "}}");
+            if (q2) {
+                std::string fld(q1 + 2, static_cast<size_t>(q2 - q1 - 2));
                 std::string value;
-                std::unordered_map<std::string, std::string>::iterator got = cache.find(fld);
+                auto got = cache.find(fld);
                 if (got == cache.end()) {
                     value = fields(fld);
                     cache.emplace(fld, value);
@@ -120,15 +121,15 @@ void OutputStream::emitPage(char const * text, std::function<std::string(std::st
                 }
                 write(value.data(), value.length());
                 p = q2 + 2;
-			} else {
-				LOG_ERROR("Internal error: unclosed tag in template");
-				break;
-			}
-		} else {
-			write(p, strlen(p));
-			break;
-		}
-	}
+            } else {
+                LOG_ERROR("Internal error: unclosed tag in template");
+                break;
+            }
+        } else {
+            write(p, strlen(p));
+            break;
+        }
+    }
 }
 
 //========================================================================

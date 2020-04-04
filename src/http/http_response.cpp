@@ -21,7 +21,7 @@
 // THE SOFTWARE.
 //========================================================================
 
-#include "iconfig.h"
+#include "../misc/string.h"
 #include "stream_chunked.h"
 #include "stream_null.h"
 #include "http_response.h"
@@ -48,20 +48,14 @@
 // Constructor.
 //--------------------------------------------------------------
 
-HttpResponse::HttpResponse(IConfig & config, HttpRequest const & request, StreamSocket & socket, bool keepalive)
-  : OutputStream(), 
-    config_(config),
+HttpResponse::HttpResponse(IHttpConfig & config, HttpRequest const & request, StreamSocket & socket, Connection connection)
+  : config_(config),
     request_(request),
     socket_(socket),
-    transformers_(),
     httpStatus_(200), 
     headerState_(0),
-    headerKey_(),
-    headerValue_(),
-    headers_(),
-    keepAlive_(keepalive),
+    connection_(connection),
     encoding_(compression::none),
-    responseDate_(),
     dump_(ansi::magenta, "=>") {
     LOG_TRACE("Init HttpResponse");
 }
@@ -82,8 +76,8 @@ HttpResponse::~HttpResponse() {
 // client.
 //--------------------------------------------------------------
 
-void HttpResponse::write(void const * data, size_t length) {
-    char const * text = reinterpret_cast<char const *>(data);
+bool HttpResponse::write(void const * data, size_t length) {
+    char const * text = static_cast<char const *>(data);
     size_t ndx = 0;
 
     // Parse the header. We try to recognize a list of
@@ -95,7 +89,7 @@ void HttpResponse::write(void const * data, size_t length) {
         switch (headerState_) {
         case 0:
             if (isalnum(ch) || ch == '-') {
-                headerKey_.push_back(ch);
+                headerKey_.push_back(static_cast<char>(ch));
             } else if (ch == ':') {
                 headerState_ = 2;
             } else if (ch == '\r') {
@@ -131,7 +125,7 @@ void HttpResponse::write(void const * data, size_t length) {
                 headerValue_.clear();
                 headerState_ = 0;
             } else {
-                headerValue_.push_back(ch);
+                headerValue_.push_back(static_cast<char>(ch));
             }
             break;
         case 4:
@@ -148,10 +142,13 @@ void HttpResponse::write(void const * data, size_t length) {
     // Header parsing is done. Just transmit the data
     // "as-is" to the destination.
 
+    bool ok = true;
     if (headerState_ == 10 && ndx < length) {
-        getDestination()->write(text + ndx, length - ndx);
+        ok = getDestination()->write(text + ndx, length - ndx);
         dump_.write(text + ndx, length - ndx);
     }
+
+    return ok;
 }
 
 //--------------------------------------------------------------
@@ -159,13 +156,14 @@ void HttpResponse::write(void const * data, size_t length) {
 // done transmitting its content.
 //--------------------------------------------------------------
 
-void HttpResponse::flush() {
+bool HttpResponse::flush() {
     if (headerState_ == 10) {
         getDestination()->flush();  // Optimal case: flush the destination stream.
     } else {
         headers_.clear();           // Error case: the resource failed to send valid headers/content.
         emitHeaders(0);             // We reply an empty page.
     }
+    return true;
 }
 
 //--------------------------------------------------------------
@@ -292,10 +290,10 @@ void HttpResponse::emitHeaders(long length) {
 
     // Set the field indicating the connection status.
 
-    if (keepAlive_) {
-        headers_.erase(HttpHeader::Connection);
-    } else {
-        headers_[HttpHeader::Connection] = "close";
+    switch (connection_) {
+    case Connection::Close:     headers_[HttpHeader::Connection] = "close";     break;
+    case Connection::Upgrade:   headers_[HttpHeader::Connection] = "upgrade";   break;
+    default:                    headers_.erase(HttpHeader::Connection);         break;  // in HTTP 1.1, no connection indication = keep alive
     }
 
     // Add miscellaneous headers.

@@ -21,10 +21,11 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#ifndef LOGGER_H
+#define LOGGER_H
 
 #include <sstream>
+#include <stdint.h>
 
 //--------------------------------------------------------------
 // LOG_* macros.
@@ -44,7 +45,7 @@
 
 namespace ansi {
 
-    enum color {
+    enum color : int {
         black,
         red,
         green,
@@ -64,6 +65,7 @@ namespace ansi {
         def                 = 128,    // default terminal color
     };
 
+    void        setupConsole();
     void        setEnabled(bool colors);
     std::string getSequence(color color);
 }
@@ -83,7 +85,7 @@ namespace logger {
     };
 
     void setLevel(level loglevel, bool logdump);
-	void registerWorkerThread(int no);
+    void registerWorkerThread(int no);
     bool isLogEnabled(level level);
     void print(char level, ansi::color color, std::ostringstream const & oss);
 
@@ -100,7 +102,7 @@ namespace logger {
         uint8_t         pending_[16];
         size_t          count_;
 
-        void emit(uint8_t const * data, size_t length);
+        void emithex(uint8_t const * data, size_t length);
     };
 }
 

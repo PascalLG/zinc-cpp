@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __STREAM_COMPRESS_H__
-#define __STREAM_COMPRESS_H__
+#ifndef STREAM_COMPRESS_H
+#define STREAM_COMPRESS_H
 
 #if defined(ZINC_COMPRESSION_GZIP) || defined(ZINC_COMPRESSION_DEFLATE)
 #define ZLIB_CONST 1
@@ -43,15 +43,15 @@
 class StreamDeflate : public OutputStream {
 public:
     StreamDeflate(bool gzip);
-    ~StreamDeflate();
+    ~StreamDeflate() override;
 
-    void write(void const * data, size_t length) override;
-    void flush() override;
+    bool write(void const * data, size_t length) override;
+    bool flush() override;
 
 private:
-	z_stream state_;
+    z_stream state_;
 
-	void compress(int flush);
+    void compress(int flush);
 };
 #endif
 
@@ -63,10 +63,10 @@ private:
 class StreamBrotli : public OutputStream {
 public:
     StreamBrotli(BrotliEncoderMode mode, long length);
-    ~StreamBrotli();
+    ~StreamBrotli() override;
 
-    void write(void const * data, size_t length) override;
-    void flush() override;
+    bool write(void const * data, size_t length) override;
+    bool flush() override;
 
 private:
     BrotliEncoderState * state_;

@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __PORTABILITY_H__
-#define __PORTABILITY_H__
+#ifndef PORTABILITY_H
+#define PORTABILITY_H
 
 //--------------------------------------------------------------
 // Definitions specific to Win32 SDK.
@@ -30,26 +30,27 @@
 
 #ifdef _WIN32
 
-#include <windows.h>
+#include <Windows.h>
+#include <string>
 
-#undef min  	// to avoid clash with std::min
-#undef max  	// to avoid clash with std::max
+#undef min      // to avoid clash with std::min
+#undef max      // to avoid clash with std::max
 
 typedef HANDLE                  HANDLE_T;
 #define IS_HANDLE_VALID(x)      (x != INVALID_HANDLE_VALUE)
 #define closefile(x)            CloseHandle(x)
 
-typedef SOCKET 					SOCKET_T;
-#define IS_SOCKET_VALID(x)		(x != INVALID_SOCKET)
+typedef SOCKET                  SOCKET_T;
+#define IS_SOCKET_VALID(x)      (x != INVALID_SOCKET)
 
-#define localtime_r(x, y) 		localtime_s((y), (x))
-#define gmtime_r(x, y)    		gmtime_s((y), (x))
-#define timegm(x)				_mkgmtime((x))
-#define tzset_					_tzset
+#define localtime_r(x, y)       localtime_s((y), (x))
+#define gmtime_r(x, y)          gmtime_s((y), (x))
+#define timegm(x)               _mkgmtime((x))
+#define tzset_                  _tzset
 
-time_t                          FileTimeToPOSIX(FILETIME & ft);
-std::string                     WideStringToUTF8(uint16_t * pstr);
-std::u16string                  UTF8ToWideString(std::string const & str);
+time_t                          FileTimeToPOSIX(FILETIME const & ft);
+std::string                     WideStringToUTF8(WCHAR const * pstr);
+std::wstring                    UTF8ToWideString(std::string const & str);
 
 #else
 
@@ -58,16 +59,16 @@ std::u16string                  UTF8ToWideString(std::string const & str);
 //--------------------------------------------------------------
 
 typedef int                     HANDLE_T;
-#define INVALID_HANDLE_VALUE	(-1)
+#define INVALID_HANDLE_VALUE    (-1)
 #define IS_HANDLE_VALID(x)      (x >= 0)
 #define closefile(x)            ::close(x)
 
-typedef int 					SOCKET_T;
-#define INVALID_SOCKET			(-1)
-#define IS_SOCKET_VALID(x)		(x >= 0)
-#define closesocket(x)			::close(x)
+typedef int                     SOCKET_T;
+#define INVALID_SOCKET          (-1)
+#define IS_SOCKET_VALID(x)      (x >= 0)
+#define closesocket(x)          ::close(x)
 
-#define tzset_					tzset
+#define tzset_                  tzset
 
 #endif
 

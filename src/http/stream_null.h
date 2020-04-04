@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __STREAM_NULL_H__
-#define __STREAM_NULL_H__
+#ifndef STREAM_NULL_H
+#define STREAM_NULL_H
 
 #include "stream.h"
 
@@ -33,9 +33,9 @@
 class StreamNull : public OutputStream {
 public:
     StreamNull();
-    ~StreamNull();
+    ~StreamNull() override;
 
-    void write(void const * data, size_t length) override;
+    bool write(void const * data, size_t length) override;
 };
 
 //--------------------------------------------------------------

@@ -24,6 +24,31 @@
 #include "gtest/gtest.h"
 #include "misc/date.h"
 
+using namespace std::literals::chrono_literals;
+
+//--------------------------------------------------------------
+// Test the copy contructor and assignment operator.
+//--------------------------------------------------------------
+
+TEST(Date, Assignment) {
+    date x1(1234);
+    date y1(1549007912);
+
+    date x2(x1);
+    date y2(y1);
+
+    date x3 = x2;
+    date y3 = y2;
+
+    EXPECT_EQ(x1, x2);
+    EXPECT_EQ(x2, x3);
+    EXPECT_EQ(x1, x3);
+
+    EXPECT_EQ(y1, y2);
+    EXPECT_EQ(y2, y3);
+    EXPECT_EQ(y1, y3);
+}
+
 //--------------------------------------------------------------
 // Test the date::valid() function.
 //--------------------------------------------------------------
@@ -40,11 +65,11 @@ TEST(Date, Valid) {
 
 TEST(Date, Format) {
 #ifdef _WIN32
-	_putenv_s("TZ", "CET-01:00");
-	_tzset();
+    _putenv_s("TZ", "CET-01:00");
+    _tzset();
 #else
-	setenv("TZ", "CET-01:00", 1);
-	tzset();
+    setenv("TZ", "CET-01:00", 1);
+    tzset();
 #endif
 
     EXPECT_EQ(date(0).format("%Y-%m-%d %H:%M:%S", date::gmt),               "1970-01-01 00:00:00");
@@ -141,15 +166,22 @@ TEST(Date, Compare) {
 //--------------------------------------------------------------
 
 TEST(Date, Add) {
-    EXPECT_EQ(date(534122717).add(-86400).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-03 23:25:17");
-    EXPECT_EQ(date(534122717).add( -3600).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 22:25:17");
-    EXPECT_EQ(date(534122717).add(   -60).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:24:17");
-    EXPECT_EQ(date(534122717).add(    -1).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:25:16");
-    EXPECT_EQ(date(534122717).add(     0).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:25:17");
-    EXPECT_EQ(date(534122717).add(    +1).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:25:18");
-    EXPECT_EQ(date(534122717).add(   +60).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:26:17");
-    EXPECT_EQ(date(534122717).add( +3600).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-05 00:25:17");
-    EXPECT_EQ(date(534122717).add(+86400).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-05 23:25:17");
+    EXPECT_EQ(date(534122717).add(-86400s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-03 23:25:17");
+    EXPECT_EQ(date(534122717).add( -3600s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 22:25:17");
+    EXPECT_EQ(date(534122717).add(   -60s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:24:17");
+    EXPECT_EQ(date(534122717).add(    -1s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:25:16");
+    EXPECT_EQ(date(534122717).add(     0s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:25:17");
+    EXPECT_EQ(date(534122717).add(    +1s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:25:18");
+    EXPECT_EQ(date(534122717).add(   +60s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:26:17");
+    EXPECT_EQ(date(534122717).add( +3600s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-05 00:25:17");
+    EXPECT_EQ(date(534122717).add(+86400s).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-05 23:25:17");
+
+    EXPECT_EQ(date(534122717).add(-24h  ).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-03 23:25:17");
+    EXPECT_EQ(date(534122717).add( -1h  ).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 22:25:17");
+    EXPECT_EQ(date(534122717).add( -1min).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:24:17");
+    EXPECT_EQ(date(534122717).add( +1min).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-04 23:26:17");
+    EXPECT_EQ(date(534122717).add( +1h  ).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-05 00:25:17");
+    EXPECT_EQ(date(534122717).add(+24h  ).format("%Y-%m-%d %H:%M:%S", date::gmt), "1986-12-05 23:25:17");
 }
 
 //========================================================================

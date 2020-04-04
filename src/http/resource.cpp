@@ -36,9 +36,9 @@
 // Constructor.
 //--------------------------------------------------------------
 
-Resource::Resource(std::string const & description)
-  : description_(description) {
-	LOG_TRACE("Init resource: " << description_);
+Resource::Resource(std::string description)
+  : description_(std::move(description)) {
+    LOG_TRACE("Init resource: " << description_);
 }
 
 //--------------------------------------------------------------
@@ -46,7 +46,7 @@ Resource::Resource(std::string const & description)
 //--------------------------------------------------------------
 
 Resource::~Resource() {
-	LOG_TRACE("Destroy resource: " << description_);
+    LOG_TRACE("Destroy resource: " << description_);
 }
 
 //========================================================================

@@ -1,5 +1,5 @@
 //========================================================================
-// Zinc - Web Server
+// Zinc - Unit Testing
 // Copyright (c) 2019, Pascal Levy
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,34 +21,25 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __ICONFIG_H__
-#define __ICONFIG_H__
-
-#include <memory>
-
-#include "uri.h"
-#include "http_status.h"
-#include "resource.h"
+#include "gtest/gtest.h"
+#include "misc/blob.h"
 
 //--------------------------------------------------------------
-
-class IConfig {
-public:
-    virtual std::shared_ptr<Resource>   resolve(URI const & uri)            = 0;
-    virtual std::shared_ptr<Resource>   makeErrorPage(HttpStatus status)    = 0;
-
-    virtual int                         getListeningPort()                  = 0;
-    virtual int                         getLimitThreads()                   = 0;
-    virtual int                         getLimitRequestLine()               = 0;
-    virtual int                         getLimitRequestHeaders()            = 0;
-    virtual int                         getLimitRequestBody()               = 0;
-    virtual int                         getTimeout()                        = 0;
-    virtual bool                        isCompressionEnabled()              = 0;
-    virtual std::string					getVersionString()					= 0;
-};
-
+// Test the blob class.
 //--------------------------------------------------------------
 
-#endif
+TEST(Blob, Creation) {
+    blob f;
+    EXPECT_TRUE(f.write("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 26));
+    EXPECT_TRUE(f.write("0123456789", 10));
+    EXPECT_EQ(f.getSize(), 36);
+    EXPECT_TRUE(f.write("abcdefghijklmnopqrstuvwxyz", 26));
+    EXPECT_EQ(f.getSize(), 62);
+
+    std::vector<uint8_t> content = f.readAll();
+    content.push_back(0);
+    EXPECT_EQ(content.size(), 63);
+    EXPECT_STREQ(reinterpret_cast<char const *>(content.data()), "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz");
+}
 
 //========================================================================

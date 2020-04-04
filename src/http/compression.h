@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __COMPRESSION_H__
-#define __COMPRESSION_H__
+#ifndef COMPRESSION_H
+#define COMPRESSION_H
 
 #include <string>
 #include <memory>
@@ -35,9 +35,9 @@
 
 namespace compression {
     enum mode {
-    	none,
-        gzip,
-        deflate,
+        none,
+        zlib_gzip,
+        zlib_deflate,
         brotli_generic,
         brotli_text,
         brotli_font,

@@ -22,7 +22,7 @@
 //========================================================================
 
 #ifdef _WIN32
-#include <windows.h>
+#include <Windows.h>
 #else
 #include <sys/stat.h> 
 #include <dirent.h>
@@ -52,22 +52,11 @@ char const fs::pathSeparator = '/';
 // Constructor.
 //--------------------------------------------------------------
 
-fs::dirent::dirent(char const * name, bool isdir, unsigned long size, date mtime)
+fs::dirent::dirent(char const * name, bool isdir, unsigned long size, date const & mtime)
     : name_(name),
       isdir_(isdir),
       size_(isdir ? 0 : size),
       mtime_(mtime) {
-}
-
-//--------------------------------------------------------------
-// Copy constructor.
-//--------------------------------------------------------------
-
-fs::dirent::dirent(dirent const & other)
-    : name_(other.name_),
-      isdir_(other.isdir_),
-      size_(other.size_),
-      mtime_(other.mtime_) {
 }
 
 //--------------------------------------------------------------
@@ -148,8 +137,23 @@ fs::filepath fs::filepath::getLastComponent() const {
 //--------------------------------------------------------------
 
 fs::filepath fs::filepath::getDirectory() const {
+    size_t first = 0;
+#ifdef _WIN32
+    if (path_.size() >= 2 && isalpha(path_[0]) && path_[1] == ':') {
+        first = 2;
+    }
+#endif
     size_t s = path_.rfind(pathSeparator);
-    return filepath((s != std::string::npos) ? ((s > 0) ? path_.substr(0, s) : std::string(1, pathSeparator)) : ".");
+    if (s != std::string::npos) {
+        if (s > first) {
+            return filepath(path_.substr(0, s));
+        }
+    } else if (!first) {
+        return filepath(std::string("."));
+    }
+    std::string dir = path_.substr(0, first);
+    dir.push_back(pathSeparator);
+    return filepath(dir);
 }
 
 //--------------------------------------------------------------
@@ -159,10 +163,15 @@ fs::filepath fs::filepath::getDirectory() const {
 
 fs::type fs::filepath::getFileType() const {
 #ifdef _WIN32
-    std::u16string s = UTF8ToWideString(path_);
+    std::wstring s = UTF8ToWideString(path_);
     DWORD attr = GetFileAttributesW(s.c_str());
     if (attr == INVALID_FILE_ATTRIBUTES) {
-        return errorNotFound;   // TODO: differentiate between not found and permission?
+        switch (GetLastError()) {
+        case ERROR_FILE_NOT_FOUND:  return errorNotFound;
+        case ERROR_PATH_NOT_FOUND:  return errorNotFound;
+        case ERROR_ACCESS_DENIED:   return errorPermission;
+        default:                    return errorOther;
+        }
     } else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
         return directory;
     } else {
@@ -200,7 +209,21 @@ void fs::filepath::getDirectoryContent(std::function<void(fs::dirent const &)> c
         path.push_back(pathSeparator);
     }
 #ifdef _WIN32
-
+    path.push_back('*');
+    WIN32_FIND_DATAW ffd;
+    HANDLE hf = FindFirstFileW(UTF8ToWideString(path).c_str(), &ffd);
+    if (hf != INVALID_HANDLE_VALUE) {
+        do {
+            if (ffd.cFileName[0] != '.') {
+                ULARGE_INTEGER filesize;
+                filesize.LowPart = ffd.nFileSizeLow;
+                filesize.HighPart = ffd.nFileSizeHigh;
+                dirent entry(WideStringToUTF8(ffd.cFileName).c_str(), (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0, static_cast<unsigned long>(filesize.QuadPart), date(FileTimeToPOSIX(ffd.ftLastWriteTime)));
+                callback(entry);
+            }
+        } while (FindNextFileW(hf, &ffd));
+        FindClose(hf);
+    }
 #else
     DIR * dp = opendir(path.c_str());
     if (dp) {
@@ -228,18 +251,18 @@ void fs::filepath::getDirectoryContent(std::function<void(fs::dirent const &)> c
 
 date fs::filepath::getModificationDate() const {
 #ifdef _WIN32
-    std::u16string s = UTF8ToWideString(path_);
-    HANDLE h = CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    std::wstring s = UTF8ToWideString(path_);
+    HANDLE h = CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
     if (h != INVALID_HANDLE_VALUE) {
         FILETIME ft;
-        BOOL ok = GetFileTime(h, NULL, NULL, &ft);
+        BOOL ok = GetFileTime(h, nullptr, nullptr, &ft);
         CloseHandle(h);
         if (ok) {
             return date(FileTimeToPOSIX(ft));
         }
     }
 #else
-	struct stat st;
+    struct stat st;
     if (stat(path_.c_str(), &st) >= 0) {
         return date(st.st_mtime);
     }
@@ -253,9 +276,9 @@ date fs::filepath::getModificationDate() const {
 
 bool fs::filepath::isAbsolute() const {
 #ifdef _WIN32
-	return path_.size() >= 3 && isalpha(path_[0]) && path_[1] == ':' && path_[2] == pathSeparator;
+    return path_.size() >= 3 && isalpha(path_[0]) && path_[1] == ':' && path_[2] == pathSeparator;
 #else
-	return !path_.empty() && path_.front() == pathSeparator;
+    return !path_.empty() && path_.front() == pathSeparator;
 #endif
 }
 
@@ -266,13 +289,16 @@ bool fs::filepath::isAbsolute() const {
 
 fs::filepath fs::filepath::makeAbsolute() const {
 #ifdef _WIN32
-	return "";
+    std::wstring path = UTF8ToWideString(path_);
+    WCHAR * buffer = _wfullpath(nullptr, path.c_str(), 0);
+    filepath res(WideStringToUTF8(buffer));
+    free(buffer);
 #else
-	char * buffer = realpath(path_.c_str(), nullptr);
+    char * buffer = realpath(path_.c_str(), nullptr);
     filepath res(buffer);
     free(buffer);
-    return res;
 #endif
+    return res;
 }
 
 //--------------------------------------------------------------
@@ -280,7 +306,7 @@ fs::filepath fs::filepath::makeAbsolute() const {
 //--------------------------------------------------------------
 
 fs::filepath & fs::filepath::operator += (fs::filepath const & component) {
-    if (component.isAbsolute()) {
+    if (component.isAbsolute() || (!component.path_.empty() && component.path_.front() == pathSeparator)) {
         path_ = component.path_;
     } else {
         auto skipDotDir = [] (std::string const & s) {
@@ -331,78 +357,6 @@ fs::filepath & fs::filepath::operator += (fs::filepath const & component) {
 }
 
 //========================================================================
-// fs::tmpfile
-//
-// Encapsulate a temporary file. The file is actually craeted the first
-// time it is written to, and it is deleted when the last descriptor/
-// handle to the file is closed.
-//
-// The implementation MUST use the plateform specific API and not rely on
-// a higher level library (such as FILE* or std::fstream) because we
-// need the raw file descriptor/handle to communicate with external
-// processes.
-//========================================================================
-
-//--------------------------------------------------------------
-// Constructor.
-//--------------------------------------------------------------
-
-fs::tmpfile::tmpfile() 
-  : fd_(INVALID_HANDLE_VALUE) {
-}
-
-//--------------------------------------------------------------
-// Destructor.
-//--------------------------------------------------------------
-
-fs::tmpfile::~tmpfile() {
-    if (IS_HANDLE_VALID(fd_)) {
-		closefile(fd_);
-    }
-}
-
-//--------------------------------------------------------------
-// Write data to the file, creating and opening it if this is
-// not already done.
-//--------------------------------------------------------------
-
-bool fs::tmpfile::write(void const * data, size_t length) {
-#ifdef _WIN32
-	return false;
-#else
-    if (fd_ < 0) {
-        char fname[32] = "tmp_XXXXXX";
-        fd_ = mkstemp(fname);
-        if (fd_ < 0) {
-            return false;
-        }
-        unlink(fname);
-    }
-    return ::write(fd_, data, length) == static_cast<ssize_t>(length);
-#endif
-}
-
-//--------------------------------------------------------------
-// Return the size of the file.
-//--------------------------------------------------------------
-
-size_t fs::tmpfile::getSize() const {
-	size_t result;
-#ifdef _WIN32
-	result = 0;
-#else
-	if (fd_ >= 0) {
-        off_t previous = lseek(fd_, 0, SEEK_CUR);
-        result = lseek(fd_, 0, SEEK_END);
-        lseek(fd_, previous, SEEK_SET);
-    } else {
-        result = 0;
-    }
-#endif
-    return result;
-}
-
-//========================================================================
 // Helper file functions.
 //========================================================================
 
@@ -432,7 +386,9 @@ fs::filepath fs::makeFilepathFromURI(std::string const & uri) {
 
 fs::filepath fs::getCurrentDirectory() {
 #ifdef _WIN32
-	return "";
+    WCHAR path[MAX_PATH];
+    GetCurrentDirectoryW(MAX_PATH, path);
+    return filepath(WideStringToUTF8(path));
 #else
     char * buffer = getcwd(nullptr, 0);
     filepath res(buffer);
@@ -446,14 +402,11 @@ fs::filepath fs::getCurrentDirectory() {
 //--------------------------------------------------------------
 
 std::string fs::getHostName() {
-	char buffer[256];
-#ifdef _WIN32
-#else
+    char buffer[256];
     if (gethostname(buffer, sizeof(buffer) - 1) < 0) {
         strcpy(buffer, "localhost");
     }
-#endif
-	return std::string(buffer);
+    return std::string(buffer);
 }
 
 //--------------------------------------------------------------
@@ -461,10 +414,19 @@ std::string fs::getHostName() {
 // variable, by calling a function once for each entry.
 //--------------------------------------------------------------
 
-void fs::enumSystemPaths(std::function<bool(fs::filepath const &)> const & callback) {
+void fs::enumSystemPaths(std::function<bool(fs::filepath const &)> callback) {
 #ifdef _WIN32
+    DWORD size = GetEnvironmentVariableW(L"PATH", nullptr, 0);
+    if (size > 0) {
+        std::wstring paths(size, 0);
+        GetEnvironmentVariableW(L"PATH", &paths.front(), size);
+        string::split(WideStringToUTF8(paths.c_str()), ';', 0, string::trim_both, [&callback] (std::string & path) {
+            fs::filepath fp(path);
+            return callback(fp);
+        });
+    }
 #else
-	std::string paths = getenv("PATH");
+    std::string paths = getenv("PATH");
     string::split(paths, ':', 0, string::trim_none, [&callback] (std::string & path) {
         fs::filepath fp(path);
         return callback(fp);
@@ -478,9 +440,12 @@ void fs::enumSystemPaths(std::function<bool(fs::filepath const &)> const & callb
 
 bool fs::isTTY() {
 #ifdef _WIN32
-	return false;
+	DWORD mode;	// hack: if retrieving the console mode fails, then outputs are probably redirected
+    bool s1 = GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode) == 0 && GetLastError() == ERROR_INVALID_HANDLE;
+	bool s2 = GetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), &mode) == 0 && GetLastError() == ERROR_INVALID_HANDLE;
+	return !s1 || !s2;
 #else
-	return isatty(1) && isatty(2);
+    return isatty(1) && isatty(2);
 #endif
 }
 

@@ -45,8 +45,7 @@
 //--------------------------------------------------------------
 
 HttpHeader::HttpHeader(Code code)
-    : code_(code),
-      name_() {
+    : code_(code) {
 
     assert(code != UserDefined); // this value is reserved for non standard headers.
 }
@@ -83,7 +82,7 @@ bool operator == (HttpHeader const & lhs, HttpHeader const & rhs) {
 size_t HttpHeader::getHash() const noexcept {
     size_t h = 5381;
     for (char c: name_) {
-        h = ((h << 5) + h) ^ (size_t) (unsigned char) tolower(c);
+        h = ((h << 5) + h) ^ static_cast<unsigned char>(tolower(c));
     }
     return code_ ^ (h << 1);
 }
@@ -173,6 +172,9 @@ HttpHeader::Mapping::Mapping()
         { HttpHeader::Refresh,                          "Refresh"                           },
         { HttpHeader::RetryAfter,                       "Retry-After"                       },
         { HttpHeader::SaveData,                         "Save-Data"                         },
+        { HttpHeader::SecWebSocketAccept,               "Sec-WebSocket-Accept"              },
+        { HttpHeader::SecWebSocketKey,                  "Sec-WebSocket-Key"                 },
+        { HttpHeader::SecWebSocketVersion,              "Sec-WebSocket-Version"             },
         { HttpHeader::Server,                           "Server"                            },
         { HttpHeader::SetCookie,                        "Set-Cookie"                        },
         { HttpHeader::Status,                           "Status"                            },
@@ -208,8 +210,7 @@ HttpHeader::Mapping::Mapping()
         { HttpHeader::XWapProfile,                      "X-Wap-Profile"                     },
         { HttpHeader::XWebKitCSP,                       "X-WebKit-CSP"                      },
         { HttpHeader::XXSSProtection,                   "X-XSS-Protection"                  },
-    },
-    mapByName_ {} {
+    } {
 
     for (auto & i: mapByCode_) {
         std::string key = i.second;

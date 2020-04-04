@@ -21,6 +21,7 @@
 // THE SOFTWARE.
 //========================================================================
 
+#include "../misc/string.h"
 #include "zinc.h"
 #include "resource_page_error.h"
 #include "resource_error_page.h"
@@ -58,9 +59,9 @@ void ResourceErrorPage::transmit(HttpResponse & response, HttpRequest const & re
         } else if (field == "server_name") {
             ret = string::encodeHtml(Zinc::getInstance().getConfiguration().getServerName());
         } else if (field == "server_addr") {
-            ret = request.getLocalAddress().getAddress();
+            ret = request.getLocalAddress().getAddressString();
         } else if (field == "server_port") {
-            ret = request.getLocalAddress().getPort();
+            ret = request.getLocalAddress().getPortString();
         } else if (field == "errno") {
             ret = std::to_string(this->status_.getStatusCode());
         } else if (field == "errmsg") {

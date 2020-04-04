@@ -21,21 +21,18 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __HTTP_REQUEST_H__
-#define __HTTP_REQUEST_H__
+#ifndef HTTP_REQUEST_H
+#define HTTP_REQUEST_H
 
 #include <string>
 
-#include "../misc/filesys.h"
+#include "../misc/blob.h"
 #include "uri.h"
 #include "http_header.h"
 #include "http_status.h"
 #include "http_verb.h"
 #include "compression.h"
-#include "stream.h"
 #include "stream_socket.h"
-
-class IConfig;
 
 //--------------------------------------------------------------
 // HTTP request.
@@ -43,7 +40,8 @@ class IConfig;
 
 class HttpRequest {
 public:
-    HttpRequest(AddrIn const & local, AddrIn const & remote, bool secure);
+    HttpRequest();
+    HttpRequest(AddrIPv4 const & local, AddrIPv4 const & remote, bool secure);
     ~HttpRequest();
 
     class Result {
@@ -64,38 +62,44 @@ public:
         HttpStatus  status_;
     };
 
-    Result                  parse(IConfig & config, InputStream & s);
-    bool	                shouldKeepAlive() const;
+    Result                  parse(InputStream & s, std::chrono::seconds timeout, size_t limitRequestLine, size_t limitRequestHeaders, size_t limitRequestBody);
+    bool                    shouldKeepAlive() const;
+    Result                  isWebSocketUpgrade() const;
     compression::set        getAcceptedEncodings() const;
     std::string const &     getHeaderValue(HttpHeader const & hdr) const;
 
-    AddrIn const &          getLocalAddress() const         { return localAddress_;     }
-    AddrIn const &          getRemoteAddress() const        { return remoteAddress_;    }
+    AddrIPv4 const &        getLocalAddress() const         { return localAddress_;     }
+    AddrIPv4 const &        getRemoteAddress() const        { return remoteAddress_;    }
     HttpVerb const &        getVerb() const                 { return verb_;             }
     URI const &             getURI() const                  { return uri_;              }
     int                     getHttpVersion() const          { return httpVersion_;      }
-    fs::tmpfile const &     getBody() const                 { return body_;             }
+    HttpStatus              getHttpStatus() const           { return status_;           }
+    blob const &            getBody() const                 { return body_;             }
     bool                    isSecureHTTP() const            { return secure_;           }
 
 private:
-    AddrIn                  localAddress_;      // local address (i.e. the server side)
-    AddrIn                  remoteAddress_;     // remote address (i.e. the client side)
+    bool                    request_;           // indicate whether we are parsing a request or a response.
+    AddrIPv4                localAddress_;      // local address (i.e. the server side)
+    AddrIPv4                remoteAddress_;     // remote address (i.e. the client side)
     bool                    secure_;            // whether the connection is secured or not (always false: TLS not supported yet)
     HttpVerb                verb_;              // verb (GET, POST, PUT, HEAD, etc.)
     URI                     uri_;               // requested URI
     HttpHeaderMap           headers_;           // request headers
     int                     httpVersion_;       // protocol version
-    fs::tmpfile             body_;              // content of the request body
+    HttpStatus              status_;            // status code
+    blob                    body_;              // content of the request body
 
-    Result  parseRequestLine(InputStream & s, int timeout, size_t maxsize);
-    Result  parseHeaders(InputStream & s, int timeout, size_t maxsize);
+    Result  parseRequestLine(InputStream & s, std::chrono::milliseconds timeout, size_t maxsize);
+    Result  parseResponseLine(InputStream & s, std::chrono::milliseconds timeout, size_t maxsize);
+    Result  parseHeaders(InputStream & s, std::chrono::milliseconds timeout, size_t maxsize);
 
-    class Body : public OutputStream {          // simple wrapper class to write to a fs::tmpfile as if it were an OutputStream
+    class Body : public OutputStream {          // simple wrapper class to write to a blob as if it were an OutputStream
     public:
-        Body(fs::tmpfile & file) : OutputStream(), file_(file)  {                               }
-        void write(void const * data, size_t length)            { file_.write(data, length);    }
+        Body(blob & store) : store_(store)                  {                                       }
+        bool write(void const * data, size_t length)        { return store_.write(data, length);    }
+
     private:
-        fs::tmpfile & file_;
+        blob & store_;
     };
 
 #ifdef UNIT_TESTING

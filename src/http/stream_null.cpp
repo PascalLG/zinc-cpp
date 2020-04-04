@@ -36,8 +36,7 @@
 // Constructor.
 //--------------------------------------------------------------
 
-StreamNull::StreamNull()
-  : OutputStream() {
+StreamNull::StreamNull() {
     LOG_TRACE("Init StreamNull");
 }
 
@@ -53,8 +52,9 @@ StreamNull::~StreamNull() {
 // Write a chunk of data on the device.
 //--------------------------------------------------------------
 
-void StreamNull::write(void const * data, size_t length) {
-    // Do nothing.
+bool StreamNull::write(void const * /* data */, size_t /* length */) {
+    // Do nothing and always suceed.
+    return true;
 }
 
 //========================================================================

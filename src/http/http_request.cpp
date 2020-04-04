@@ -22,18 +22,23 @@
 //========================================================================
 
 #include <algorithm>
+#include <string>
+#include <array>
 
 #include "../misc/portability.h"
 #include "../misc/logger.h"
-#include "iconfig.h"
+#include "../misc/base64.h"
+#include "../misc/string.h"
+#include "ihttpconfig.h"
 #include "http_request.h"
 
 //========================================================================
 // HttpRequest
 //
-// Represent an HTTP request. Parse the data the client sends and store
-// the protocol version, the verb, the URI, the headers and the body.
-// Provide methods to retrieve infos about the request.
+// Represent an HTTP request or an HTTP response. If parsing a request,
+// store the protocol version, the verb, the URI, the headers and the
+// body. If parsing a response, store the protocol version, the status
+// code and the body.
 //========================================================================
 
 int const   HTTP_VERSION_0_9    = 0x0009;
@@ -41,19 +46,29 @@ int const   HTTP_VERSION_1_0    = 0x0100;
 int const   HTTP_VERSION_1_1    = 0x0101;
 
 //--------------------------------------------------------------
-// Constructor.
+// Constructor for an HTTP response.
 //--------------------------------------------------------------
 
-HttpRequest::HttpRequest(AddrIn const & local, AddrIn const & remote, bool secure)
-  : localAddress_(local),
+HttpRequest::HttpRequest()
+  : request_(false),
+    secure_(false),
+    httpVersion_(HTTP_VERSION_0_9) {
+
+    LOG_TRACE("Init HttpRequest (parsing response)");
+}
+
+//--------------------------------------------------------------
+// Constructor for an HTTP request.
+//--------------------------------------------------------------
+
+HttpRequest::HttpRequest(AddrIPv4 const & local, AddrIPv4 const & remote, bool secure)
+  : request_(true),
+    localAddress_(local),
     remoteAddress_(remote),
     secure_(secure),
-    verb_(),
-    headers_(),
-    httpVersion_(HTTP_VERSION_0_9),
-    body_() {
+    httpVersion_(HTTP_VERSION_0_9) {
 
-    LOG_TRACE("Init HttpRequest");
+    LOG_TRACE("Init HttpRequest (parsing request)");
 }
 
 //--------------------------------------------------------------
@@ -68,20 +83,27 @@ HttpRequest::~HttpRequest() {
 // Parse a request.
 //--------------------------------------------------------------
 
-HttpRequest::Result HttpRequest::parse(IConfig & config, InputStream & s) {
+HttpRequest::Result HttpRequest::parse(InputStream & s, std::chrono::seconds timeout, size_t limitRequestLine, size_t limitRequestHeaders, size_t limitRequestBody) {
 
     // Parse the request line and headers. Abort as soon
     // as an error occurs, don't try to recover: we will
     // simply force a connection close.
 
-    int timeout = config.getTimeout() * 1000;
-    Result r1 = parseRequestLine(s, timeout, config.getLimitRequestLine());
-    if (!r1.isOK()) {
-        return r1;
+    if (request_) {
+        Result r1 = parseRequestLine(s, timeout, limitRequestLine);
+        if (!r1.isOK()) {
+            return r1;
+        }
+        LOG_INFO_RECV("Requesting: " << verb_ << " " << uri_.getPath() << " HTTP/" << (httpVersion_ >> 8) << "." << (httpVersion_ & 0xFF));
+    } else {
+        Result r1 = parseResponseLine(s, timeout, limitRequestLine);
+        if (!r1.isOK()) {
+            return r1;
+        }
+        LOG_INFO_RECV("Response: HTTP/" << (httpVersion_ >> 8) << "." << (httpVersion_ & 0xFF) << " " << status_.getStatusCode() << " " << status_.getStatusString());
     }
-    LOG_INFO_RECV("Requesting: " << verb_ << " " << uri_.getPath() << " HTTP/" << (httpVersion_ >> 8) << "." << (httpVersion_ & 0xFF));
 
-    Result r2 = parseHeaders(s, timeout, config.getLimitRequestHeaders());
+    Result r2 = parseHeaders(s, timeout, limitRequestHeaders);
     if (!r2.isOK()) {
         return r2;
     }
@@ -103,13 +125,13 @@ HttpRequest::Result HttpRequest::parse(IConfig & config, InputStream & s) {
         if (length < 0) {
             return Result::Error(400);
         }
-        if (length > static_cast<long>(config.getLimitRequestBody())) {
+        if (length > static_cast<long>(limitRequestBody)) {
             return Result::Error(413);
         }
 
         reader = [length, timeout, &s] (OutputStream & body) {
             logger::dump dump(ansi::cyan, "<=");
-            size_t rem = length;
+            auto rem = static_cast<size_t>(length);
             while (rem) {
                 char buffer[1024];
                 size_t r = s.read(buffer, std::min(rem, sizeof(buffer)), timeout, false);
@@ -157,6 +179,27 @@ bool HttpRequest::shouldKeepAlive() const {
 }
 
 //--------------------------------------------------------------
+// Indicates if this request is a request to switch protocol to
+// WebSocket. (See RFC 6455.)
+//--------------------------------------------------------------
+
+HttpRequest::Result HttpRequest::isWebSocketUpgrade() const {
+    if (string::compare_i(getHeaderValue(HttpHeader::Upgrade), "websocket")) {
+        std::string nonce = getHeaderValue(HttpHeader::SecWebSocketKey);
+        std::vector<uint8_t> decoded;
+        if (!getVerb().isOneOf(HttpVerb::Get) ||
+            !string::compare_i(getHeaderValue(HttpHeader::Connection), "upgrade") ||
+            !string::compare_i(getHeaderValue(HttpHeader::SecWebSocketVersion), "13") ||
+            !base64::decode(decoded, nonce) ||
+            decoded.size() < 16) {
+            return Result::Error(400);
+        }
+        return Result::OK();
+    }
+    return Result::Abort();
+}
+
+//--------------------------------------------------------------
 // Return the list of accepted encodings.
 //--------------------------------------------------------------
 
@@ -186,7 +229,7 @@ std::string const & HttpRequest::getHeaderValue(HttpHeader const & hdr) const {
 // - blanks at the end of a line are silently ignored
 //--------------------------------------------------------------
 
-HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, int timeout, size_t maxsize) {
+HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, std::chrono::milliseconds timeout, size_t maxsize) {
     std::string buffer;
     int state = 0, ch = 0, val1 = 0, val2 = 0;
     bool skip = false;
@@ -211,7 +254,7 @@ HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, int timeout, 
         switch (state) {
         case 0:                                     // read the first character of the verb
             if (isalpha(ch)) {
-                buffer.push_back(ch);
+                buffer.push_back(static_cast<char>(ch));
                 state = 1;
             } else {
                 state = 13;
@@ -219,7 +262,7 @@ HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, int timeout, 
             break;
         case 1:                                     // read the verb
             if (isalpha(ch)) {
-                buffer.push_back(ch);
+                buffer.push_back(static_cast<char>(ch));
             } else if (isblank(ch)) {
                 LOG_TRACE("Parsed verb: " << buffer);
                 verb_ = HttpVerb(buffer);
@@ -237,7 +280,7 @@ HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, int timeout, 
             break;
         case 3:                                     // read the URI
             if (isgraph(ch)) {
-                buffer.push_back(ch);
+                buffer.push_back(static_cast<char>(ch));
             } else {
                 LOG_TRACE("Parsed URI: " << buffer);
                 if (uri_.parse(buffer)) {
@@ -325,6 +368,108 @@ HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, int timeout, 
 }
 
 //--------------------------------------------------------------
+// Parse the response line. A finite state machine is used to parse
+// the whole line in one pass, extracting the HTTP version and
+// status code on the fly.
+//
+// The parser tolerates some deviations from the standard:
+// - it accepts LF instead of CRLF as line endings
+// - it treats TAB as SP
+// - it accepts consecutive blanks where only one is expected
+// - blanks at the end of a line are silently ignored
+//--------------------------------------------------------------
+
+HttpRequest::Result HttpRequest::parseResponseLine(InputStream & s, std::chrono::milliseconds timeout, size_t maxsize) {
+    int state = 0, ch = 0, val1 = 0, val2 = 0, status = 0;
+    bool skip = false;
+
+    for (size_t count = 0; count < maxsize; ) {
+
+        // Read the next character, if necessary.
+
+        if (!skip) {
+            ch = s.readByte(timeout);
+            if (ch < 0) {
+                return Result::Abort();             // timeout or socket closed
+            }
+            count++;
+        } else {
+            skip = false;
+        }
+
+        // Determine what to do, depending on the current
+        // state and character.
+
+        switch (state) {
+        case 0:                                     // read a 'H'
+            state = ch == 'H' || ch == 'h' ? 1 : 10;
+            break;
+        case 1:                                     // read a 'T'
+            state = ch == 'T' || ch == 't' ? 2 : 10;
+            break;
+        case 2:                                     // read a 'T'
+            state = ch == 'T' || ch == 't' ? 3 : 10;
+            break;
+        case 3:                                     // read a 'P'
+            state = ch == 'P' || ch == 'p' ? 4 : 10;
+            break;
+        case 4:                                     // read a '/'
+            state = ch == '/' ? 5 : 10;
+            break;
+        case 5:                                     // read major version number
+            if (ch >= '0' && ch <= '9') {
+                val1 *= 10;
+                val1 += ch - '0';
+            } else if (ch == '.') {
+                state = 6;
+            } else {
+                state = 10;
+            }
+            break;
+        case 6:                                    // read minor version number
+            if (ch >= '0' && ch <= '9') {
+                val2 *= 10;
+                val2 += ch - '0';
+                httpVersion_ = (val1 << 8) | val2;
+            } else if (isblank(ch)) {
+                state = 7;
+            } else {
+                state = 10;
+            }
+            break;
+        case 7:                                     // skip blanks
+            if (!isblank(ch)) {
+                state = 8;
+                skip = true;
+            }
+            break;
+        case 8:
+            if (ch >= '0' && ch <= '9') {
+                status *= 10;
+                status += ch - '0';
+                status_ = status;
+            } else if (isblank(ch)) {
+                state = 9;
+            } else {
+                state = 10;
+            }
+            break;
+        case 9:                                     // skip blanks and process CRLF
+            if (ch == '\n') {
+                return Result::OK();
+            }
+            break;
+        case 10:                                    // error recovery
+            if (ch == '\n') {
+                return Result::Error(400);
+            }
+            break;
+        }
+    }
+    return Result::Error(400);
+}
+
+//--------------------------------------------------------------
 // Parse headers. A finite state machine is used to parse the
 // whole header section in one pass, populating a dictionary
 // of key/value pairs on the fly.
@@ -336,7 +481,7 @@ HttpRequest::Result HttpRequest::parseRequestLine(InputStream & s, int timeout, 
 // - blanks at the end of a line are silently ignored
 //--------------------------------------------------------------
 
-HttpRequest::Result HttpRequest::parseHeaders(InputStream & s, int timeout, size_t maxsize) {
+HttpRequest::Result HttpRequest::parseHeaders(InputStream & s, std::chrono::milliseconds timeout, size_t maxsize) {
     std::string key, value;
     int state = 0, ch = 0;
     bool skip = false;
@@ -367,7 +512,7 @@ HttpRequest::Result HttpRequest::parseHeaders(InputStream & s, int timeout, size
                 return result;
             } else if (isalnum(ch)) {
                 key.clear();
-                key.push_back(ch);
+                key.push_back(static_cast<char>(ch));
                 state = 2;
             } else {
                 state = 6;
@@ -384,7 +529,7 @@ HttpRequest::Result HttpRequest::parseHeaders(InputStream & s, int timeout, size
             if (ch == ':') {
                 state = 3;
             } else if (isgraph(ch)) {
-                key.push_back(ch);
+                key.push_back(static_cast<char>(ch));
             } else {
                 state = 6;
             }
@@ -398,7 +543,7 @@ HttpRequest::Result HttpRequest::parseHeaders(InputStream & s, int timeout, size
             break;
         case 4:                                     // read value up to the end of line.
             if (isprint(ch)) {
-                value.push_back(ch);
+                value.push_back(static_cast<char>(ch));
             } else if (ch == '\r') {
                 state = 5;
             } else if (ch == '\n') {

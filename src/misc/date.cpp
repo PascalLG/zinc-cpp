@@ -72,9 +72,9 @@ bool date::valid() const {
 // they are very unlikely to happen.)
 //--------------------------------------------------------------
 
-date date::add(int interval) const {
+date date::add(std::chrono::seconds interval) const {
     assert(valid());
-    return date(timestamp_ + interval);
+    return date(timestamp_ + interval.count());
 }
 
 //--------------------------------------------------------------
@@ -96,9 +96,9 @@ int date::compare(date const & rhs) const {
 std::string date::format(char const * format, timezone zone) const {
     struct tm tm;
     switch (zone) {
-		case local: localtime_r(&timestamp_, &tm);    break;
-		default:    gmtime_r(&timestamp_, &tm);       break;
-	}
+        case local: localtime_r(&timestamp_, &tm);    break;
+        default:    gmtime_r(&timestamp_, &tm);       break;
+    }
 
     std::ostringstream oss;
     oss << std::put_time(&tm, format);

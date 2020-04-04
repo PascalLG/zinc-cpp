@@ -21,7 +21,7 @@
 // THE SOFTWARE.
 //========================================================================
 
-#include <iostream>    // TODO: à supprimer
+#include "../misc/string.h"
 #include "version.h"
 #include "resource_builtin.h"
 #include "resource_directory.h"
@@ -140,7 +140,7 @@ std::shared_ptr<Resource> Zinc::resolve(URI const & uri) {
         if (cgi) {
             return std::make_shared<ResourceScript>(filepath, uripath, path_info, *cgi);
         } else {
-            std::ifstream fs(filepath.getStdString(), std::ifstream::in);
+            std::ifstream fs(filepath.getStdString(), std::ifstream::in | std::ifstream::binary);
             if (!fs.good()) {
                 throw 403;
             }
@@ -158,6 +158,16 @@ std::shared_ptr<Resource> Zinc::resolve(URI const & uri) {
 std::shared_ptr<Resource> Zinc::makeErrorPage(HttpStatus status) {
     return std::make_shared<ResourceErrorPage>(status);
 }
+
+//--------------------------------------------------------------
+// Handle a websocket message. (Not used.)
+//--------------------------------------------------------------
+
+#ifdef ZINC_WEBSOCKET
+void Zinc::handleMessage(WebSocket::Connection & /*socket*/, WebSocket::Frame & /*frame*/) {
+    LOG_TRACE("WebSocket message received");
+}
+#endif
 
 //--------------------------------------------------------------
 // Return a version string containing the server name, major and

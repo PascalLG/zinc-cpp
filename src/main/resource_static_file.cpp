@@ -21,6 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
+#include <algorithm>
+
 #include "../http/mimetype.h"
 #include "zinc.h"
 #include "resource_static_file.h"
@@ -52,7 +54,7 @@ ResourceStaticFile::ResourceStaticFile(fs::filepath const & filename, std::ifstr
 void ResourceStaticFile::transmit(HttpResponse & response, HttpRequest const & request) {
     date ifModifiedSince = date::from_http(request.getHeaderValue(HttpHeader::IfModifiedSince));
     if (lastModified_ > ifModifiedSince && request.getVerb().isOneOf(HttpVerb::Get | HttpVerb::Head)) {
-        fileStream_.seekg(0, fileStream_.end);
+        fileStream_.seekg(0, std::istream::end);
         size_t size = static_cast<size_t>(fileStream_.tellg());
 
         response.emitHeader(HttpHeader::ContentType, mimeType_);

@@ -69,7 +69,7 @@ private:
 
 class Configuration {
 private:
-    void buildExtentionMap();
+    void buildExtensionMap();
 
     class ParameterBlock {
     public:
@@ -85,9 +85,9 @@ private:
         bool    loadParameter(std::string const & name, std::string const & value, std::string & err);
         void    print(std::ostream & out, bool file);
 
-        std::string const & getSectionName() const              { return section_;                                              }
-        Variant &           at(char const * opt)                { return values_.at(opt);                                       }
-        Variant const &     at(char const * opt) const          { return values_.at(opt);                                       }
+        std::string const & getSectionName() const              { return section_;                                                          }
+        Variant &           at(char const * opt)                { return values_.at(opt);                                                   }
+        Variant const &     at(char const * opt) const          { return values_.at(opt);                                                   }
 
     private:
         std::string                                             section_;       // Name of this block of parameters
@@ -103,8 +103,8 @@ public:
     public:
         CGI(char const * section, char const * extensions, char const * interpreter, char const * cmdline);
 
-        fs::filepath    getInterpreter() const                  { return at(optInterpreter).getStringValue();                   }
-        std::string     getCmdLine() const                      { return at(optCmdLine).getStringValue();                       }
+        fs::filepath    getInterpreter() const                  { return at(optInterpreter).getStringValue();                               }
+        std::string     getCmdLine() const                      { return at(optCmdLine).getStringValue();                                   }
     };
 
     void                        log();
@@ -112,19 +112,19 @@ public:
     bool                        load(fs::filepath const & filename);
     CGI const *                 getInterpreter(fs::filepath const & filename) const;
 
-    void                        setListeningPort(int port)      { general_.at(optListen) = port;                                }
-    int                         getListeningPort() const        { return general_.at(optListen).getIntegerValue();              }
-    int                         getLimitThreads() const         { return general_.at(optLimitThreads).getIntegerValue();        }
-    int                         getLimitRequestLine() const     { return general_.at(optLimitRequestLine).getIntegerValue();    }
-    int                         getLimitRequestHeaders() const  { return general_.at(optLimitRequestHeaders).getIntegerValue(); }
-    int                         getLimitRequestBody() const     { return general_.at(optLimitRequestBody).getIntegerValue();    }
-    bool                        isCompressionEnabled() const    { return general_.at(optCompression).getBooleanValue();         }
+    void                        setListeningPort(int port)      { general_.at(optListen) = port;                                            }
+    int                         getListeningPort() const        { return general_.at(optListen).getIntegerValue();                          }
+    int                         getLimitThreads() const         { return general_.at(optLimitThreads).getIntegerValue();                    }
+    int                         getLimitRequestLine() const     { return general_.at(optLimitRequestLine).getIntegerValue();                }
+    int                         getLimitRequestHeaders() const  { return general_.at(optLimitRequestHeaders).getIntegerValue();             }
+    int                         getLimitRequestBody() const     { return general_.at(optLimitRequestBody).getIntegerValue();                }
+    bool                        isCompressionEnabled() const    { return general_.at(optCompression).getBooleanValue();                     }
     std::vector<std::string>    getDirectoryIndexes() const;
-    bool                        isListingEnabled() const        { return general_.at(optDirectoryListing).getBooleanValue();    }
-    int                         getTimeout() const              { return general_.at(optTimeout).getIntegerValue();             }
-    int                         getExpires() const              { return general_.at(optExpires).getIntegerValue();             }
-    std::string const &         getServerAdmin() const          { return general_.at(optServerAdmin).getStringValue();          }
-    std::string const &         getServerName() const           { return general_.at(optServerName).getStringValue();           }
+    bool                        isListingEnabled() const        { return general_.at(optDirectoryListing).getBooleanValue();                }
+    std::chrono::seconds        getTimeout() const              { return std::chrono::seconds(general_.at(optTimeout).getIntegerValue());   }
+    std::chrono::seconds        getExpires() const              { return std::chrono::seconds(general_.at(optExpires).getIntegerValue());   }
+    std::string const &         getServerAdmin() const          { return general_.at(optServerAdmin).getStringValue();                      }
+    std::string const &         getServerName() const           { return general_.at(optServerName).getStringValue();                       }
 
 private:
     ParameterBlock                          general_;           // General parameter block

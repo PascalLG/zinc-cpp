@@ -1,13 +1,16 @@
 #=========================================================================
 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.15)
 project(zinc)
 
 set(CMAKE_CXX_STANDARD 14)
+cmake_policy(SET CMP0091 NEW)
+
 string(TIMESTAMP ZINC_BUILD_TIMESTAMP "%s" UTC)
 
 if(WIN32)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 #---------------------------------------------------------------
@@ -15,11 +18,12 @@ endif()
 #---------------------------------------------------------------
 
 set(ZINC_VERSION_MAJOR           1)
-set(ZINC_VERSION_MINOR          00)
+set(ZINC_VERSION_MINOR          01)
 set(ZINC_COMPRESSION_GZIP       ON)
 set(ZINC_COMPRESSION_DEFLATE    ON)
 set(ZINC_COMPRESSION_BROTLI     ON)
- 
+set(ZINC_WEBSOCKET             OFF)
+
 #---------------------------------------------------------------
 # External librairies
 #---------------------------------------------------------------
@@ -31,6 +35,10 @@ add_subdirectory(lib)
 #---------------------------------------------------------------
 
 set(SOURCES_APP
+    src/misc/base64.cpp
+    src/misc/base64.h
+    src/misc/blob.cpp
+    src/misc/blob.h
     src/misc/date.cpp
     src/misc/date.h
     src/misc/filesys.cpp
@@ -39,9 +47,13 @@ set(SOURCES_APP
     src/misc/logger.h
     src/misc/portability.cpp
     src/misc/portability.h
+    src/misc/prng.cpp
+    src/misc/prng.h
+    src/misc/sha1.cpp
+    src/misc/sha1.h
     src/misc/string.cpp
     src/misc/string.h
-    src/http/iconfig.h
+    src/http/ihttpconfig.h
     src/http/compression.cpp
     src/http/compression.h
     src/http/http_header.cpp
@@ -72,6 +84,8 @@ set(SOURCES_APP
     src/http/stream_socket.h
     src/http/uri.cpp
     src/http/uri.h
+    src/http/websocket.cpp
+    src/http/websocket.h
     src/main/configuration.cpp
     src/main/configuration.h
     src/main/resource_builtin.cpp
@@ -110,26 +124,31 @@ include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR})
 find_package(Threads REQUIRED)
 
 add_executable(${CMAKE_PROJECT_NAME} src/main/main.cpp ${SOURCES_APP})
-target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC Threads::Threads)
-if(NOT WIN32)
+target_link_libraries(${CMAKE_PROJECT_NAME} Threads::Threads)
+
+if(WIN32)
+	target_link_libraries(${CMAKE_PROJECT_NAME} wsock32 ws2_32)
+else()
 	target_compile_options(${CMAKE_PROJECT_NAME} PUBLIC -Wall)
 endif()
 
 if (${ZINC_COMPRESSION_GZIP})
     target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC ZINC_COMPRESSION_GZIP)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC zlibstatic)
-#    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/lib/zlib)
-#    include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/lib/zlib_build)
+    target_link_libraries(${CMAKE_PROJECT_NAME} zlibstatic)
 endif()
 
 if (${ZINC_COMPRESSION_DEFLATE})
     target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC ZINC_COMPRESSION_DEFLATE)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC zlibstatic)
+    target_link_libraries(${CMAKE_PROJECT_NAME} zlibstatic)
 endif()
 
 if (${ZINC_COMPRESSION_BROTLI})
     target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC ZINC_COMPRESSION_BROTLI)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC brotlienc-static)
+    target_link_libraries(${CMAKE_PROJECT_NAME} brotlienc-static)
+endif()
+
+if (${ZINC_WEBSOCKET})
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PUBLIC ZINC_WEBSOCKET)
 endif()
 
 #---------------------------------------------------------------
@@ -164,43 +183,60 @@ MAKERESOURCE(TitilliumWeb-Regular.ttf   resource_titilliumweb.h)
 #---------------------------------------------------------------
 
 set(SOURCES_TEST
-    test/misc/date.cpp
-    test/misc/filesys.cpp
-    test/misc/string.cpp
-    test/http/compression.cpp
-    test/http/http_header.cpp
-    test/http/http_request.cpp
-    test/http/http_status.cpp
-    test/http/http_verb.cpp
-    test/http/mimetype.cpp
-    test/http/stream_chunked.cpp
-    test/http/stream_compress.cpp
-    test/http/uri.cpp
-    test/main/configuration.cpp
-    test/main/resource_redirection.cpp
-    test/main/resource_script.cpp
+    test/streams.cpp
+    test/streams.h
+    test/misc/ut_base64.cpp
+    test/misc/ut_blob.cpp
+    test/misc/ut_date.cpp
+    test/misc/ut_filesys.cpp
+    test/misc/ut_prng.cpp
+    test/misc/ut_sha1.cpp
+    test/misc/ut_string.cpp
+    test/http/ut_compression.cpp
+    test/http/ut_http_header.cpp
+    test/http/ut_http_request.cpp
+    test/http/ut_http_status.cpp
+    test/http/ut_http_verb.cpp
+    test/http/ut_mimetype.cpp
+    test/http/ut_stream_chunked.cpp
+    test/http/ut_stream_compress.cpp
+    test/http/ut_uri.cpp
+    test/http/ut_websocket.cpp
+    test/main/ut_configuration.cpp
+    test/main/ut_resource_redirection.cpp
+    test/main/ut_resource_script.cpp
 )
 
 set(UT_PROJECT_NAME ut)
 
 add_executable(${UT_PROJECT_NAME} ${SOURCES_TEST} ${SOURCES_APP})
 target_include_directories(${UT_PROJECT_NAME} PUBLIC src)
-target_link_libraries(${UT_PROJECT_NAME} PUBLIC gtest gtest_main)
+target_link_libraries(${UT_PROJECT_NAME} gtest gtest_main)
 target_compile_definitions(${UT_PROJECT_NAME} PUBLIC UNIT_TESTING)
+
+if(WIN32)
+	target_link_libraries(${UT_PROJECT_NAME} wsock32 ws2_32)
+else()
+	target_compile_options(${UT_PROJECT_NAME} PUBLIC -Wall)
+endif()
 
 if (${ZINC_COMPRESSION_GZIP})
     target_compile_definitions(${UT_PROJECT_NAME} PUBLIC ZINC_COMPRESSION_GZIP)
-    target_link_libraries(${UT_PROJECT_NAME} PUBLIC zlibstatic)
+    target_link_libraries(${UT_PROJECT_NAME} zlibstatic)
 endif()
 
 if (${ZINC_COMPRESSION_DEFLATE})
     target_compile_definitions(${UT_PROJECT_NAME} PUBLIC ZINC_COMPRESSION_DEFLATE)
-    target_link_libraries(${UT_PROJECT_NAME} PUBLIC zlibstatic)
+    target_link_libraries(${UT_PROJECT_NAME} zlibstatic)
 endif()
 
 if (${ZINC_COMPRESSION_BROTLI})
     target_compile_definitions(${UT_PROJECT_NAME} PUBLIC ZINC_COMPRESSION_BROTLI)
-    target_link_libraries(${UT_PROJECT_NAME} PUBLIC brotlienc-static)
+    target_link_libraries(${UT_PROJECT_NAME} brotlienc-static)
+endif()
+
+if (${ZINC_WEBSOCKET})
+    target_compile_definitions(${UT_PROJECT_NAME} PUBLIC ZINC_WEBSOCKET)
 endif()
 
 #=========================================================================

@@ -66,20 +66,21 @@ StreamDeflate::~StreamDeflate() {
 // Write a chunk of data.
 //--------------------------------------------------------------
 
-void StreamDeflate::write(void const * data, size_t length) {
+bool StreamDeflate::write(void const * data, size_t length) {
     state_.avail_in = length;
     state_.next_in = reinterpret_cast<unsigned char const *>(data);
     compress(Z_NO_FLUSH);
+    return true;
 }
 
 //--------------------------------------------------------------
 // Flush the stream.
 //--------------------------------------------------------------
 
-void StreamDeflate::flush() {
+bool StreamDeflate::flush() {
     state_.avail_in = 0;
     compress(Z_FINISH);
-    getDestination()->flush();
+    return getDestination()->flush();
 }
 
 //--------------------------------------------------------------
@@ -141,7 +142,7 @@ StreamBrotli::~StreamBrotli() {
 // Write a chunk of data.
 //--------------------------------------------------------------
 
-void StreamBrotli::write(void const * data, size_t length) {
+bool StreamBrotli::write(void const * data, size_t length) {
     unsigned char const * next_in = reinterpret_cast<unsigned char const *>(data);
     do {
         unsigned char buffer[1024];
@@ -153,13 +154,14 @@ void StreamBrotli::write(void const * data, size_t length) {
 
         LOG_TRACE("Brotli encode: " << sizeof(buffer) - avail_out << " bytes");
     } while (length);
+    return true;
 }
 
 //--------------------------------------------------------------
 // Flush the stream.
 //--------------------------------------------------------------
 
-void StreamBrotli::flush() {
+bool StreamBrotli::flush() {
     do {
         unsigned char buffer[1024];
         unsigned char * next_out = buffer;
@@ -172,7 +174,7 @@ void StreamBrotli::flush() {
         LOG_TRACE("encode " << sizeof(buffer) - avail_out << " bytes");
     } while (BrotliEncoderHasMoreOutput(state_));
 
-    getDestination()->flush();
+    return getDestination()->flush();
 }
 
 //--------------------------------------------------------------

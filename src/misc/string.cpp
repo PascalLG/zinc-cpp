@@ -22,6 +22,7 @@
 //========================================================================
 
 #include <algorithm>
+#include <stdexcept>
 
 #include "string.h"
 
@@ -77,8 +78,8 @@ bool string::compare_i(std::string const & s1, std::string const & s2) {
 // substring enumeration stops immediately.
 //--------------------------------------------------------------
 
-void string::split(std::string const & str, char delimiter, size_t start, string::mode trim, std::function<bool(std::string &)> const & callback) {
-    auto stub = [trim, &callback] (std::string s) {
+void string::split(std::string const & str, char delimiter, size_t start, string::mode trim, std::function<bool(std::string &)> callback) {
+    auto stub = [trim, &callback] (std::string s) -> bool {
         string::trim(s, trim);
         if (!s.empty()) {
             return callback(s);
@@ -108,8 +109,7 @@ void string::split(std::string const & str, char delimiter, size_t start, string
 //--------------------------------------------------------------
 
 std::string string::decodeURI(std::string const & s) {
-
-    auto decode = [] (int ch) {
+    auto decode = [] (int ch) -> int {
         if (ch >= '0' && ch <= '9') {
             return ch - '0';
         } else if (ch >= 'A' && ch <= 'F') {
@@ -122,7 +122,7 @@ std::string string::decodeURI(std::string const & s) {
     };
 
     std::string ret;
-    int state = 0, v1, v2;
+    int state = 0, v1 = 0, v2 = 0;
 
     size_t len = s.length();
     for (size_t i = 0; i <= len; i++) {
@@ -147,7 +147,7 @@ std::string string::decodeURI(std::string const & s) {
             if ((v2 = decode(ch)) < 0) {
                 throw std::runtime_error("invalid URI encoding");
             }
-            ret.push_back((v1 << 4) | v2);
+            ret.push_back(static_cast<char>((v1 << 4) | v2));
             state = 0;
             break;
         }

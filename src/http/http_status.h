@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __HTTP_STATUS_H__
-#define __HTTP_STATUS_H__
+#ifndef HTTP_STATUS_H
+#define HTTP_STATUS_H
 
 #include <string>
 #include <unordered_map>
@@ -33,6 +33,7 @@
 
 class HttpStatus {
 public:
+    HttpStatus() : status_(0)                                                       {                                           }
     HttpStatus(int status) : status_(status)                                        {                                           }
     HttpStatus(HttpStatus const & other) : status_(other.status_)                   {                                           }
 
@@ -41,7 +42,7 @@ public:
     friend bool         operator == (HttpStatus const & lhs, HttpStatus const & rhs) { return lhs.status_ == rhs.status_;       }
     friend bool         operator != (HttpStatus const & lhs, HttpStatus const & rhs) { return lhs.status_ != rhs.status_;       }
 
-    int          		getStatusCode() const                                        { return status_;                          }
+    int                 getStatusCode() const                                        { return status_;                          }
     std::string const & getStatusString() const;
 
 private:
@@ -50,7 +51,7 @@ private:
     class Mapping {
     public:
         Mapping();
-    	std::unordered_map<int, std::string> mapByStatus_;
+        std::unordered_map<int, std::string> mapByStatus_;
     };
 
     Mapping & getMap() const;

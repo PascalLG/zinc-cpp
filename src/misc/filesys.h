@@ -21,11 +21,13 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __FILESYS_H__
-#define __FILESYS_H__
+#ifndef FILESYS_H
+#define FILESYS_H
 
 #include <string>
 #include <functional>
+#include <ostream>
+#include <vector>
 
 #include "portability.h"
 #include "date.h"
@@ -48,8 +50,8 @@ namespace fs {
 
     class dirent {
     public:
-        dirent(char const * name, bool isdir, unsigned long size, date mtime);
-        dirent(dirent const & other);
+        dirent(char const * name, bool isdir, unsigned long size, date const & mtime);
+        dirent(dirent const & other) = default;
 
         std::string const & getName() const                                                     { return name_;                         }
         type                getFileType() const                                                 { return isdir_ ? directory : file;     }
@@ -97,28 +99,15 @@ namespace fs {
         std::string             path_;
     };
 
-    class tmpfile {
-    public:
-        tmpfile();
-        virtual ~tmpfile();
-
-        bool        write(void const * data, size_t length);
-        size_t      getSize() const;
-        HANDLE_T    getFileDescriptor() const   { return fd_; }
-
-    private:
-		HANDLE_T fd_;
-    };
-
     filepath        makeFilepathFromURI(std::string const & uri);
     filepath        getCurrentDirectory();
     std::string     getHostName();
-    void            enumSystemPaths(std::function<bool(filepath const &)> const & callback);
+    void            enumSystemPaths(std::function<bool(filepath const &)> callback);
     bool            isTTY();
 }
 
 //--------------------------------------------------------------
-// Specialize std::hash to support STL containers.
+// Specialize std::hash for fs::filepath.
 //--------------------------------------------------------------
 
 namespace std {

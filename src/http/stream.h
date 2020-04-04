@@ -21,11 +21,12 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __STREAM_H__
-#define __STREAM_H__
+#ifndef STREAM_H
+#define STREAM_H
 
 #include <functional>
 #include <string>
+#include <chrono>
 
 #include "http_header.h"
 
@@ -35,8 +36,10 @@
 
 class InputStream {
 public:
-    int             readByte(int timeout);
-    virtual size_t  read(void * data, size_t length, int timeout, bool exact) = 0;
+    virtual ~InputStream() = default;
+
+    int             readByte(std::chrono::milliseconds timeout);
+    virtual size_t  read(void * data, size_t length, std::chrono::milliseconds timeout, bool exact) = 0;
 };
 
 //--------------------------------------------------------------
@@ -50,15 +53,15 @@ public:
     virtual ~OutputStream()                                                     {                               }
 
     void            setDestination(OutputStream * destination)                  { destination_ = destination;   }
-    OutputStream  * getDestination() const                                      { return destination_;    		}
+    OutputStream  * getDestination() const                                      { return destination_;          }
 
-    virtual void    write(void const * data, size_t length) = 0;
-    virtual void    flush();
+    virtual bool    write(void const * data, size_t length) = 0;
+    virtual bool    flush();
 
     void            emitEol();
     void            emitHeader(HttpHeader const & header, std::string const & value);
     void            emitPage(char const * text);
-    void            emitPage(char const * text, std::function<std::string(std::string const &)> const & fields);
+    void            emitPage(char const * text, std::function<std::string(std::string const &)> fields);
 
 private:
     OutputStream * destination_;

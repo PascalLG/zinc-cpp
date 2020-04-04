@@ -177,9 +177,9 @@ std::string guessEncoding(std::istream & is) {
     std::string result;
 
     char buffer[2048]; // only test the first 2 kb of the file
-    is.seekg(0, is.end);
+    is.seekg(0, std::istream::end);
     size_t count = std::min(static_cast<size_t>(is.tellg()), sizeof(buffer));
-    is.seekg(0, is.beg);
+    is.seekg(0, std::istream::beg);
     is.read(buffer, count);
 
     if (isUTF16(buffer, count, false)) {
@@ -203,7 +203,7 @@ std::string guessEncoding(std::istream & is) {
 //--------------------------------------------------------------
 
 bool isUTF8(char const * text, size_t length, bool * ascii) {
-    uint8_t const * str = (uint8_t const *) text;
+    auto str = reinterpret_cast<uint8_t const *>(text);
     size_t ndx = 0;
     *ascii = true;
 
@@ -267,7 +267,7 @@ bool isUTF16(char const * text, size_t length, bool bigendian) {
     if ((length & 1) == 0) {
         size_t pos = bigendian ? 1 : 0;
         for (size_t i = 0; i < length; i += 2) {
-            uint16_t ch = ((uint16_t) (uint8_t) text[i + pos]) | (((uint16_t) (uint8_t) text[i + 1 - pos]) << 8);
+            unsigned ch = static_cast<unsigned>(static_cast<uint8_t>(text[i + pos])) | (static_cast<unsigned>(static_cast<uint8_t>(text[i + 1 - pos])) << 8);
             if (!isValidUnicodeChar(ch) || (ch == 0xFEFF && i != 0)) {
                 return false;
             }
@@ -286,7 +286,7 @@ bool isUTF16(char const * text, size_t length, bool bigendian) {
 bool isValidUnicodeChar(uint32_t ch) {
     // check if control character
     static uint32_t const ctrl = (1u << '\a') | (1u << '\b') | (1u << '\t') | (1u << '\n') |
-								 (1u << '\v') |	(1u << '\f') | (1u << '\r') | (1u << '\x1B');
+                                 (1u << '\v') | (1u << '\f') | (1u << '\r') | (1u << '\x1B');
 
     if (ch < 32 && ((1u << ch) & ctrl) != 0) {
         return true;

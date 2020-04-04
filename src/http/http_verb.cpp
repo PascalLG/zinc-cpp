@@ -21,6 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
+#include <ostream>
+
 #include "../misc/string.h"
 #include "http_verb.h"
 
@@ -73,8 +75,7 @@ HttpVerb::Mapping::Mapping()
         { HttpVerb::Options,    "OPTIONS"   },
         { HttpVerb::Trace,      "TRACE"     },
         { HttpVerb::Patch,      "PATCH"     },
-    },
-    mapByName_ {} {
+    } {
 
     for (auto & i: mapByVerb_) {
         mapByName_.emplace(i.second, i.first);

@@ -4,9 +4,9 @@ Oh no! Another web server…
 
 So, what's the point? This one is designed to be small and portable. It requires no installation and no configuration. It can even run from a USB stick. Just start it from the command line in the root folder of your web site, et voilà! Plus, it offers logging options that prove useful when debugging a web service. Its architecture also allows for easy reuse of the HTTP layer in another application.
 
-Typical use cases for `zinc` are when you need to prototype a small site locally, or when you want to share a folder on your intranet, and don't want (or can't) install a full Apache/PHP stack.
+Typical use cases for `zinc` are when you need to prototype a small site locally, or when you want to share a folder on your intranet, and don't want (or can't) install a full Apache/PHP stack. I also successfully embedded this server in several projects where I needed a small HTTP server.
 
-The `zinc` server runs on all UNIX flavours: Linux, macOS, FreeBSD, etc.
+The `zinc` server runs on all UNIX flavours (Linux, macOS, FreeBSD, etc.) and Windows.
 
 By the way, you may ask: why the name? Well, I started working on this project in February 2019 when everybody was about to celebrate the 30th anniversary of the World Wide Web, and 30 is the atomic number of the zinc metal.
 
@@ -25,6 +25,7 @@ By the way, you may ask: why the name? Well, I started working on this project i
 * Server-generated directory listing when browsing a folder with no index file
 * CGI (with automatic configuration for PHP and Python)
 * Detailed logs
+* Experimental support for the WebSocket protocol (see RFC6455)
 
 What it *does not* implement (yet):
 
@@ -45,7 +46,7 @@ What it will *never* implement:
 
 ## Installation and usage
 
-Download the executable file for your plateform in the Release tab, rename it to `zinc` and copy it in a folder where your shell can find it. On most Linux and macOS systems, `/usr/local/bin` or `/usr/bin` will do. You can also put it elsewhere (for example on a USB stick) but you'll have to type the full path to  launch it. If necessary, ensure everybody has execute permission on the file. Then:
+Download the executable file for your plateform in the Release tab, rename it to `zinc` and copy it in a folder where your shell can find it. On most Linux and macOS systems, `/usr/local/bin` or `/usr/bin` will do. You can also put it elsewhere (for example on a USB stick) but you'll have to type the full path to launch it. If necessary, ensure everybody has execute permission on the file. Then:
 
 * open a terminal
 * cd to the root folder of the site you want to serve
@@ -59,13 +60,13 @@ To stop the server, type Ctrl+C in the terminal, or send the `zinc` process a SI
 
 At startup, `zinc` explores your system (to be specific: it explores the folders listed in your `PATH` environment variable) to find interpreters for PHP and Python. When an interpreter is successfully found, requests for files with the corresponding extension are treated as CGI scripts and passed to this interpreter.
 
-Note: the PHP module that implements the CGI interface is named `php-cgi` and it is not installed by default on most systems. You may have to install it manually if you want to serve PHP scripts. On Debian/Ubuntu: `sudo apt-get install php-cgi`, on macOS: `brew install php`.
+Note: the PHP module that implements the CGI interface is named `php-cgi` and it is not installed by default on most systems. You may have to install it manually if you want to serve PHP scripts. On Debian/Ubuntu: `sudo apt-get install php-cgi`, on macOS: `brew install php`. On Windows, this module is named `php-cgi.exe` and it seems to be installed by default.
 
 You can extend `zinc` to execute scripts in other languages. See the Configuration section below.
 
 ## Logs
 
-The server prints logs on the terminal as requests arrive and are processed. You can set the log level at startup with the -l option. (See below.) Available levels are:
+The server prints logs on the terminal as requests arrive and are being processed. You can set the log level at startup with the -l option. (See below.) Available levels are:
 
 Level | Description
 ------|------------
@@ -153,7 +154,7 @@ Option     | Description
 
 ## Building zinc from sources
 
-Zinc is a C++14 cmake based project. To build it, you need `cmake` version 3.9+, the regular `make` tool and any C++ compiler/toolchain for which a cmake generator is available.
+Zinc is a C++14 cmake based project. To build it, you need `cmake` version 3.9+, the regular `make` tool and any C++ compiler/toolchain for which a cmake generator is available. On UNIX-like systems:
 
 * Clone the repository on your local computer: `git clone https://github.com/PascalLG/zinc-cpp.git`
 * Move to the folder `git` just created: `cd zinc-cpp`
@@ -161,6 +162,8 @@ Zinc is a C++14 cmake based project. To build it, you need `cmake` version 3.9+,
 * Create a build directory and jump into it: `mkdir build && cd build`
 * Configure the project for a release build: `cmake -DCMAKE_BUILD_TYPE=Release ..` You need network connectivity at this point, as this downloads a few external libraries from GitHub.
 * Build the project: `make`
+
+When using the MSVC toolchain on Windows, the procedure is similar except that `cmake` generates a Visual Studio solution. Just double-click the `zinc.sln` solution file and build it like any other solution. If you'd rather build on the CLI, add the `-G "NMake Makefiles"` to the `cmake` command line to generate a regular makefile you can build with `nmake`. Refer to `cmake` documentation for more information.
 
 If the build is successful, you end up with two executable files in the build folder. The `zinc` file is the server itself, while the `ut` file is a command line application that runs unit test suites on various parts of the server code.
 
@@ -173,8 +176,9 @@ ZINC_VERSION_MINOR        | any integer | Version minor number
 ZINC_COMPRESSION_GZIP     | ON or OFF   | Enable/disable gzip compression
 ZINC_COMPRESSION_DEFLATE  | ON or OFF   | Enable/disable deflate compression
 ZINC_COMPRESSION_BROTLI   | ON or OFF   | Enable/disable brotli compression
+ZINC_WEBSOCKET            | ON or OFF   | Enable/disable websocket support. (See below.)
 
-When a compression scheme is enabled, the corresponding library is automatically downloaded from GitHub, built, and statically linked with the server code.
+When a compression scheme is enabled, the corresponding library is automatically downloaded from GitHub, built, and statically linked with the server code. The WebSocket support is somewhat experimental and is only useful when embedding `Zinc` in another application, where you can implement the required callback to respond to WebSocket messages.
 
 The `www` folder contains a test web site, with scripts to process forms in PHP and Python. For easy testing, just symlink it from your build folder: `ln -s ../www www`, launch `zinc` and go to `http://127.0.0.1:8080/www/` in your browser.
 

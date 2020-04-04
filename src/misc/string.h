@@ -21,37 +21,38 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __STRING_H__
-#define __STRING_H__
+#ifndef STRING_H
+#define STRING_H
 
 #include <string>
 #include <functional>
+
+namespace string {
 
 //--------------------------------------------------------------
 // Helper string functions.
 //--------------------------------------------------------------
 
-namespace string {
+extern std::string const empty;
 
-    extern std::string const empty;
+enum mode {
+    trim_none    = 0x00,
+    trim_left    = 0x01,
+    trim_right   = 0x02,
+    trim_both    = (trim_left | trim_right),
+};
 
-    enum mode {
-        trim_none    = 0x00,
-        trim_left    = 0x01,
-        trim_right   = 0x02,
-        trim_both    = (trim_left | trim_right),
-    };
-
-    void        trim(std::string & s, mode m);
-    void        lowercase(std::string & s);
-    bool        compare_i(std::string const & s1, std::string const & s2);
-    void        split(std::string const & str, char delimiter, size_t start, mode trim, std::function<bool(std::string &)> const & callback);
-    std::string decodeURI(std::string const & s);
-    std::string encodeHtml(std::string const & s);
-    long        to_long(std::string const & str, int base);
-}
+void        trim(std::string & s, mode m);
+void        lowercase(std::string & s);
+bool        compare_i(std::string const & s1, std::string const & s2);
+void        split(std::string const & str, char delimiter, size_t start, mode trim, std::function<bool(std::string &)> callback);
+std::string decodeURI(std::string const & s);
+std::string encodeHtml(std::string const & s);
+long        to_long(std::string const & str, int base);
 
 //--------------------------------------------------------------
+
+}
 
 #endif
 

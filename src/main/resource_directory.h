@@ -34,16 +34,16 @@
 
 class ResourceDirectory : public Resource {
 public:
-	ResourceDirectory(std::string const & uri, std::unordered_map<std::string, std::string> const & query);
+    ResourceDirectory(std::string const & uri, std::unordered_map<std::string, std::string> const & query);
 
-	void transmit(HttpResponse & response, HttpRequest const & request) override;
+    void transmit(HttpResponse & response, HttpRequest const & request) override;
 
 private:
     std::string                                  uri_;
     std::unordered_map<std::string, std::string> query_;
 
     std::string const & getParameterValue(std::string const & name) const;
-    std::string  		formatModificationDate(fs::dirent const & entry) const;
+    std::string         formatModificationDate(fs::dirent const & entry) const;
 };
 
 //--------------------------------------------------------------

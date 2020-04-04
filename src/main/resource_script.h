@@ -25,6 +25,7 @@
 #define __RESOURCE_SCRIPT_H__
 
 #include "../misc/filesys.h"
+#include "../misc/blob.h"
 #include "../http/resource.h"
 #include "configuration.h"
 
@@ -41,11 +42,11 @@ public:
 private:
     fs::filepath                scriptname_;
     std::string                 scripturi_;
-    std::string 				pathinfo_;
+    std::string                 pathinfo_;
     Configuration::CGI const &  cgi_;
     std::string                 errors_;
 
-    bool runScript(HttpResponse & response, fs::tmpfile const & body, char const ** args, char const ** env);
+    bool runScript(HttpResponse & response, blob const & body, std::vector<std::string> const & args, std::vector<std::string> const & env);
 
 #ifdef UNIT_TESTING
 public:
@@ -54,6 +55,28 @@ private:
 #endif
     std::vector<std::string>    buildArguments() const;
     std::vector<std::string>    buildEnvironment(HttpRequest const & request) const;
+};
+
+//--------------------------------------------------------------
+// Pipe between processes.
+//--------------------------------------------------------------
+
+class Pipe {
+public:
+    Pipe();
+    ~Pipe();
+
+    enum Side {
+        Reading = 0,
+        Writing = 1,
+    };
+
+    bool        create();
+    void        close(Side side);
+    HANDLE_T    get(Side side) const        { return pipe_[side]; }
+
+private:
+    HANDLE_T pipe_[2];
 };
 
 //--------------------------------------------------------------

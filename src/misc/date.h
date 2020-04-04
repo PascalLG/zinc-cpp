@@ -21,10 +21,11 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __DATE_H__
-#define __DATE_H__
+#ifndef DATE_H
+#define DATE_H
 
 #include <string>
+#include <chrono>
 
 //--------------------------------------------------------------
 // Date/time.
@@ -40,11 +41,11 @@ public:
 public:
     date();
     date(time_t timestamp);
-    date(date const & other) : timestamp_(other.timestamp_)         {                                               }
-    date & operator = (date const & other)                          { timestamp_ = other.timestamp_; return *this;  }
+    date(date const &) = default;
+    date & operator = (date const &) = default;
 
     bool        valid() const;
-    date        add(int interval) const;
+    date        add(std::chrono::seconds interval) const;
     int         compare(date const & rhs) const;
     std::string format(char const * format, timezone zone) const;
     std::string to_http() const;

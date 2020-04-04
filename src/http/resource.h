@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __RESOURCE_H__
-#define __RESOURCE_H__
+#ifndef RESOURCE_H
+#define RESOURCE_H
 
 #include "http_request.h"
 #include "http_response.h"
@@ -33,14 +33,14 @@
 
 class Resource {
 public:
-	Resource(std::string const & description);
-	virtual ~Resource();
+    Resource(std::string description);
+    virtual ~Resource();
 
-	std::string const & getDescription() const 											{ return description_; }
-	virtual void   		transmit(HttpResponse & response, HttpRequest const & request) 	= 0;
+    std::string const & getDescription() const                                          { return description_; }
+    virtual void        transmit(HttpResponse & response, HttpRequest const & request)  = 0;
 
 private:
-	std::string	description_;
+    std::string description_;
 };
 
 //--------------------------------------------------------------

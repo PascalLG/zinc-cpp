@@ -27,9 +27,11 @@
 #include <sys/wait.h>
 #endif
 #include <iostream>
+#include <algorithm>
 
 #include "../misc/portability.h"
 #include "../misc/logger.h"
+#include "../misc/string.h"
 #include "zinc.h"
 #include "resource_script.h"
 
@@ -65,25 +67,13 @@ void ResourceScript::transmit(HttpResponse & response, HttpRequest const & reque
     std::vector<std::string> args = buildArguments();
     std::vector<std::string> env = buildEnvironment(request);
 
-    std::vector<char const *> buffer;
-    for (std::string const & x: args) {
-        buffer.push_back(x.c_str());
-    }
-    buffer.push_back(nullptr);
-    size_t nenv = buffer.size();
-    for (std::string const & x: env) {
-        buffer.push_back(x.c_str());
-    }
-    buffer.push_back(nullptr);
-
     response.emitHeader(HttpHeader::ContentType, "text/plain; charset=utf-8");  // default, should be overriden by the script itself
     response.emitHeader(HttpHeader::LastModified, response.getResponseDate().to_http());
     response.emitHeader(HttpHeader::Expires, response.getResponseDate().to_http()); // expires immediately
     response.emitHeader(HttpHeader::CacheControl, "no-cache, no-store, must-revalidate");
     response.emitHeader(HttpHeader::Pragma, "no-cache");
 
-    char const ** ptr = buffer.data();
-    if (!runScript(response, request.getBody(), ptr, ptr + nenv)) {
+    if (!runScript(response, request.getBody(), args, env)) {
         LOG_ERROR("Fork of " << cgi_.getInterpreter() << " failed.");
         response.emitEol();
         response.emitPage("Not enough resources to fork interpreter.");
@@ -260,17 +250,17 @@ std::vector<std::string> ResourceScript::buildEnvironment(HttpRequest const & re
     add("HTTPS",                false,  request.isSecureHTTP() ? "on" : "");
     add("PATH_INFO",            true,   pathinfo_);
     add("QUERY_STRING",         true,   request.getURI().getQuery());
-    add("REMOTE_ADDR",          true,   request.getRemoteAddress().getAddress());
+    add("REMOTE_ADDR",          true,   request.getRemoteAddress().getAddressString());
     add("REMOTE_HOST",          true,   request.getRemoteAddress().getNameInfo());
-    add("REMOTE_PORT",          true,   request.getRemoteAddress().getPort());
+    add("REMOTE_PORT",          true,   request.getRemoteAddress().getPortString());
     add("REQUEST_METHOD",       true,   request.getVerb().getVerbName());
     add("REQUEST_URI",          true,   request.getURI().getRequestURI(false));
     add("SCRIPT_FILENAME",      true,   scriptname_.makeAbsolute().getStdString());
     add("SCRIPT_NAME",          true,   scripturi_);
-    add("SERVER_ADDR",          true,   request.getLocalAddress().getAddress());
+    add("SERVER_ADDR",          true,   request.getLocalAddress().getAddressString());
     add("SERVER_ADMIN",         false,  configuration.getServerAdmin());
     add("SERVER_NAME",          false,  configuration.getServerName());
-    add("SERVER_PORT",          false,  request.getLocalAddress().getPort());
+    add("SERVER_PORT",          false,  request.getLocalAddress().getPortString());
     add("SERVER_PROTOCOL",      true,   "HTTP/1.1");
     add("SERVER_SOFTWARE",      true,   Zinc::getInstance().getVersionString());
 
@@ -294,37 +284,113 @@ std::vector<std::string> ResourceScript::buildEnvironment(HttpRequest const & re
 // variables, and redirecting its standard input/output.
 //--------------------------------------------------------------
 
-bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body, char const ** args, char const ** env) {
-
-    for (size_t i = 0; args[i]; i++) {
-        LOG_TRACE("execve arg: " << args[i]);
-    }
-    for (size_t i = 0; env[i]; i++) {
-        LOG_TRACE("execve env: " << env[i]);
-    }
-
+bool ResourceScript::runScript(HttpResponse & response, blob const & body, std::vector<std::string> const & args, std::vector<std::string> const & env) {
 #ifdef _WIN32
 
+    // Convert arguments and environnment block to a
+    // format suitable for CreateProcess.
+
+    std::vector<wchar_t> cmdline;
+    for (auto it = args.cbegin(); it != args.cend(); ++it) {
+        LOG_TRACE("arg: " << *it);
+        std::wstring e = UTF8ToWideString(*it);
+        cmdline.push_back('"');
+        cmdline.insert(cmdline.end(), e.cbegin(), e.cend());
+        cmdline.push_back('"');
+        cmdline.push_back(' ');
+    }
+    cmdline.push_back('\0');
+
+    std::vector<wchar_t> envblock;
+    for (auto it = env.cbegin(); it != env.cend(); ++it) {
+        LOG_TRACE("env: " << *it);
+        std::wstring e = UTF8ToWideString(*it);
+        envblock.insert(envblock.end(), e.cbegin(), e.cend());
+        envblock.push_back('\0');
+    }
+    envblock.push_back('\0');
+
+    // Create pipes to redirect the interpreter standard and
+    // error outputs.
+
+    Pipe pout, perr;
+    if (!pout.create() || !perr.create()) {
+        LOG_ERROR("Error creating communication pipes");
+        return false;
+    }
+
+    // Launch the interpreter.
+
+    STARTUPINFOW si;
+    memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    si.hStdInput = body.getFileDescriptor();
+    si.hStdOutput = pout.get(Pipe::Writing);
+    si.hStdError = perr.get(Pipe::Writing);
+    SetHandleInformation(si.hStdInput, HANDLE_FLAG_INHERIT, 1);
+    SetFilePointer(si.hStdInput, 0, nullptr, FILE_BEGIN);
+
+    PROCESS_INFORMATION pi;
+    memset(&pi, 0, sizeof(pi));
+    std::wstring app = UTF8ToWideString(cgi_.getInterpreter().getStdString());
+    if (!CreateProcessW(app.c_str(), cmdline.data(), nullptr, nullptr, TRUE, CREATE_DEFAULT_ERROR_MODE | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, envblock.data(), nullptr, &si, &pi)) {
+        return false;
+    }
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    pout.close(Pipe::Writing);
+    perr.close(Pipe::Writing);
+
+    for (int eof = 0; eof !=0x03 ; ) {
+        DWORD avail, read;
+        char buffer[1024];
+        if (PeekNamedPipe(pout.get(Pipe::Reading), nullptr, 0, nullptr, &avail, nullptr)) {
+            ReadFile(pout.get(Pipe::Reading), buffer, std::min(static_cast<size_t>(avail), sizeof(buffer)), &read, nullptr);
+            response.write(buffer, read);
+        } else {
+            eof |= 0x01;
+        }
+        if (PeekNamedPipe(perr.get(Pipe::Reading), nullptr, 0, nullptr, &avail, nullptr)) {
+            ReadFile(perr.get(Pipe::Reading), buffer, std::min(static_cast<size_t>(avail), sizeof(buffer)), &read, nullptr);
+            errors_.append(buffer, read);
+        } else {
+            eof |= 0x02;
+        }
+        Sleep(0);
+    }
+
 #else
+
+    // Convert arguments and environnment block to a
+    // format suitable for execve.
+
+    std::vector<char const *> buffer;
+    for (std::string const & s: args) {
+        LOG_TRACE("execve arg: " << s);
+        buffer.push_back(s.c_str());
+    }
+    buffer.push_back(nullptr);
+    size_t nenv = buffer.size();
+    for (std::string const & s: env) {
+        LOG_TRACE("execve env: " << s);
+        buffer.push_back(s.c_str());
+    }
+    buffer.push_back(nullptr);
+
     // Create pipes to redirect the interpreter standard and
     // error outputs, then fork.
 
-    int stdout[2], stderr[2];
-    if (pipe(stdout) < 0) {
-        return false;
-    }
-    if (pipe(stderr) < 0) {
-        close(stdout[0]);
-        close(stdout[1]);
+    Pipe pout, perr;
+    if (!pout.create() || !perr.create()) {
+        LOG_ERROR("Error creating communication pipes");
         return false;
     }
 
     pid_t pid = fork();
     if (pid == -1) {
-        close(stdout[0]);
-        close(stdout[1]);
-        close(stderr[0]);
-        close(stderr[1]);
         return false;
     }
 
@@ -333,12 +399,12 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
         // We are in the child process. Redirect the standard and error
         // output to our pipes, and close unused descriptors.
 
-        dup2(stdout[1], STDOUT_FILENO);
-        dup2(stderr[1], STDERR_FILENO);
-        close(stdout[0]);
-        close(stdout[1]);
-        close(stderr[0]);
-        close(stderr[1]);
+        dup2(pout.get(Pipe::Writing), STDOUT_FILENO);
+        dup2(perr.get(Pipe::Writing), STDERR_FILENO);
+        pout.close(Pipe::Reading);
+        pout.close(Pipe::Writing);
+        perr.close(Pipe::Reading);
+        perr.close(Pipe::Writing);
 
         // If the request has a body, redirect the standard input to
         // the file containing the body content.
@@ -351,7 +417,8 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
         // Execute the interpreter. If the call is successful, this
         // call never returns.
 
-        execve(cgi_.getInterpreter().getCString(), const_cast<char **>(args), const_cast<char **>(env));
+        char const ** ptr = buffer.data();
+        execve(cgi_.getInterpreter().getCString(), const_cast<char **>(ptr), const_cast<char **>(ptr + nenv));
 
         // In case executing the interpreter fails, print an error
         // message and exit immediately.
@@ -365,12 +432,12 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
         // pipes and loop to forward the standard output of the interpreter
         // to the client, and the error output to a local buffer.
 
-        close(stdout[1]);
-        close(stderr[1]);
+        pout.close(Pipe::Writing);
+        perr.close(Pipe::Writing);
 
         struct pollfd pf[2];
-        pf[0].fd = stdout[0];
-        pf[1].fd = stderr[0];
+        pf[0].fd = pout.get(Pipe::Reading);
+        pf[1].fd = perr.get(Pipe::Reading);
         char buffer[1024];
 
         for (int eof = 0; eof != 0x03; ) {
@@ -378,7 +445,7 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
             int r = poll(pf, 2, 5000);
             if (r > 0) {
                 if (pf[0].revents & (POLLIN | POLLHUP)) {
-                    int count = read(stdout[0], buffer, sizeof(buffer));
+                    int count = read(pout.get(Pipe::Reading), buffer, sizeof(buffer));
                     if (count > 0) {
                         response.write(buffer, count);
                     } else {
@@ -386,7 +453,7 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
                     }
                 }
                 if (pf[1].revents & (POLLIN | POLLHUP)) {
-                    int count = read(stderr[0], buffer, sizeof(buffer));
+                    int count = read(perr.get(Pipe::Reading), buffer, sizeof(buffer));
                     if (count > 0) {
                         errors_.append(buffer, count);
                     } else {
@@ -399,15 +466,73 @@ bool ResourceScript::runScript(HttpResponse & response, fs::tmpfile const & body
             }
         }
 
-        // Wait for the child process to terminate and close the last
-        // descriptors.
+        // Wait for the child process to terminate.
 
         waitpid(pid, nullptr, 0);
-        close(stdout[0]);
-        close(stderr[0]);
+    }
+
+#endif
+    return true;
+}
+
+//========================================================================
+// Pipe
+//
+// Helper class to manage a pipe between two processes. The main goal
+// of this class is to implement RAII to help with error handling in
+// the ResourceScript class.
+//========================================================================
+
+//--------------------------------------------------------------
+// Constructor.
+//--------------------------------------------------------------
+
+Pipe::Pipe() 
+  : pipe_ { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE } {
+}
+
+//--------------------------------------------------------------
+// Destructor.
+//--------------------------------------------------------------
+
+Pipe::~Pipe() {
+    close(Reading);
+    close(Writing);
+}
+
+//--------------------------------------------------------------
+// Create the pipe.
+//--------------------------------------------------------------
+
+bool Pipe::create() {
+#ifdef _WIN32
+    SECURITY_ATTRIBUTES attr;
+    attr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    attr.bInheritHandle = TRUE;
+    attr.lpSecurityDescriptor = NULL;
+
+    if (!CreatePipe(&pipe_[Reading], &pipe_[Writing], &attr, 0)) {
+        return false;
+    }
+
+    SetHandleInformation(pipe_[Reading], HANDLE_FLAG_INHERIT, 0);
+#else
+    if (pipe(pipe_) < 0) {
+        return false;
     }
 #endif
     return true;
+}
+
+//--------------------------------------------------------------
+// Close one side of the pipe.
+//--------------------------------------------------------------
+
+void Pipe::close(Side side) {
+    if (IS_HANDLE_VALID(pipe_[side])) {
+        closefile(pipe_[side]);
+        pipe_[side] = INVALID_HANDLE_VALUE;
+    }
 }
 
 //========================================================================

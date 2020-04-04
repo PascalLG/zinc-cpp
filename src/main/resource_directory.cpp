@@ -24,6 +24,8 @@
 #include <cassert>
 #include <algorithm>
 
+#include "../misc/string.h"
+#include "../misc/filesys.h"
 #include "zinc.h"
 #include "resource_page_directory.h"
 #include "resource_directory.h"
@@ -117,12 +119,12 @@ void ResourceDirectory::transmit(HttpResponse & response, HttpRequest const & re
         } else if (field == "server_name") {
             ret = string::encodeHtml(Zinc::getInstance().getConfiguration().getServerName());
         } else if (field == "server_addr") {
-            ret = request.getLocalAddress().getAddress();
+            ret = request.getLocalAddress().getAddressString();
         } else if (field == "server_port") {
-            ret = request.getLocalAddress().getPort();
+            ret = request.getLocalAddress().getPortString();
         } else if (field == "folder") {
-        	ret = string::encodeHtml(this->uri_);
-		} else if (field == "content") {
+            ret = string::encodeHtml(this->uri_);
+        } else if (field == "content") {
             std::vector<fs::dirent> list;
             fs::makeFilepathFromURI(this->uri_).getDirectoryContent([&] (fs::dirent const & entry) {
                 list.push_back(entry);

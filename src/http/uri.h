@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __URI_H__
-#define __URI_H__
+#ifndef URI_H
+#define URI_H
 
 #include <string>
 #include <unordered_map>
@@ -33,7 +33,7 @@
 
 class URI {
 public:
-    URI();
+    URI() = default;
 
     bool    parse(std::string const & uri);
     void    clear();

@@ -24,29 +24,33 @@
 #ifndef __ZINC_H__
 #define __ZINC_H__
 
-#include "../http/iconfig.h"
+#include "../http/ihttpconfig.h"
 #include "configuration.h"
 
 //--------------------------------------------------------------
 // Zinc server configuration
 //--------------------------------------------------------------
 
-class Zinc : public IConfig {
+class Zinc : public IHttpConfig {
 public:
-    Configuration & getConfiguration()                      { return configuration_;                           }
+    Configuration & getConfiguration()                              { return configuration_;                           }
     static Zinc &   getInstance();
 
-    int             getListeningPort() override             { return configuration_.getListeningPort();        }
-    int             getLimitThreads() override              { return configuration_.getLimitThreads();         }
-    int             getLimitRequestLine() override          { return configuration_.getLimitRequestLine();     }
-    int             getLimitRequestHeaders() override       { return configuration_.getLimitRequestHeaders();  }
-    int             getLimitRequestBody() override          { return configuration_.getLimitRequestBody();     }
-    int             getTimeout() override                   { return configuration_.getTimeout();              }
-    bool            isCompressionEnabled() override         { return configuration_.isCompressionEnabled();    }
-    std::string     getVersionString() override;
+    int                     getListeningPort() override             { return configuration_.getListeningPort();        }
+    int                     getLimitThreads() override              { return configuration_.getLimitThreads();         }
+    int                     getLimitRequestLine() override          { return configuration_.getLimitRequestLine();     }
+    int                     getLimitRequestHeaders() override       { return configuration_.getLimitRequestHeaders();  }
+    int                     getLimitRequestBody() override          { return configuration_.getLimitRequestBody();     }
+    std::chrono::seconds    getTimeout() override                   { return configuration_.getTimeout();              }
+    bool                    isCompressionEnabled() override         { return configuration_.isCompressionEnabled();    }
+    std::string             getVersionString() override;
 
     std::shared_ptr<Resource>   resolve(URI const & uri) override;
     std::shared_ptr<Resource>   makeErrorPage(HttpStatus status) override;
+
+#ifdef ZINC_WEBSOCKET
+    void    handleMessage(WebSocket::Connection & socket, WebSocket::Frame & frame);
+#endif
 
 private:
     Zinc();

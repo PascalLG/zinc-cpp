@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __STREAM_CHUNKED_H__
-#define __STREAM_CHUNKED_H__
+#ifndef STREAM_CHUNKED_H
+#define STREAM_CHUNKED_H
 
 #include <functional>
 
@@ -32,22 +32,22 @@
 // Stream transformer for chunked Transfer-Encoding.
 //--------------------------------------------------------------
 
-#define CHUNK_MAXSIZE		4096
+#define CHUNK_MAXSIZE       4096
 
 class StreamChunked : public OutputStream {
 public:
-    StreamChunked(std::function<void(long)> const & emit, size_t maxlen = CHUNK_MAXSIZE);
-    ~StreamChunked();
+    StreamChunked(std::function<void(long)> emit, size_t maxlen = CHUNK_MAXSIZE);
+    ~StreamChunked() override;
 
-    void    write(void const * data, size_t length) override;
-    void    flush() override;
+    bool    write(void const * data, size_t length) override;
+    bool    flush() override;
 
 private:
-    std::function<void(long)>   emitHeaders_;           // callback to emit the HTTP headers
-    bool                        headersSent_;           // flag to remember if HTTP headers are already sent
-    char                        currentChunk_[CHUNK_MAXSIZE];    // current chunk of data
-    size_t		                maxChunkLength_;		// maximum size of a chunk
-    size_t                      chunkLength_;           // number of bytes in the current chunk
+    std::function<void(long)>   emitHeaders_;                   // callback to emit the HTTP headers
+    bool                        headersSent_;                   // flag to remember if HTTP headers are already sent
+    char                        currentChunk_[CHUNK_MAXSIZE];   // current chunk of data
+    size_t                      maxChunkLength_;                // maximum size of a chunk
+    size_t                      chunkLength_;                   // number of bytes in the current chunk
 
     void    encodeChunk();
 };

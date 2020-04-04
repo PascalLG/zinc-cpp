@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __HTTP_HEADER_H__
-#define __HTTP_HEADER_H__
+#ifndef HTTP_HEADER_H
+#define HTTP_HEADER_H
 
 #include <string>
 #include <unordered_map>
@@ -100,6 +100,9 @@ public:
         Refresh,
         RetryAfter,
         SaveData,
+        SecWebSocketAccept,
+        SecWebSocketKey,
+        SecWebSocketVersion,
         Server,
         SetCookie,
         Status,

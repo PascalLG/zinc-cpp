@@ -33,6 +33,8 @@
 #include "version.h"
 #include "resource_builtin.h"
 
+using namespace std::literals::chrono_literals;
+
 //========================================================================
 // ResourceBuiltIn
 //
@@ -82,7 +84,7 @@ void ResourceBuiltIn::transmit(HttpResponse & response, HttpRequest const & requ
         response.emitHeader(HttpHeader::ContentType, getMimeType(resource_, nullptr));
         response.emitHeader(HttpHeader::ContentLength, std::to_string(length_));
         response.emitHeader(HttpHeader::LastModified, lastModified.to_http());
-        response.emitHeader(HttpHeader::Expires, response.getResponseDate().add(31557600).to_http()); // about 1 year
+        response.emitHeader(HttpHeader::Expires, response.getResponseDate().add(31557600s).to_http()); // about 1 year
         response.emitEol();
         response.write(data_, length_);
     } else {

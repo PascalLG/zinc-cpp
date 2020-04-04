@@ -22,7 +22,7 @@
 //========================================================================
 
 #include "../misc/logger.h"
-#include "iconfig.h"
+#include "ihttpconfig.h"
 #include "uri.h"
 #include "resource.h"
 #include "http_request.h"
@@ -41,7 +41,7 @@
 // Construct an HTTP connection object.
 //--------------------------------------------------------------
 
-HttpConnection::HttpConnection(IConfig & config, StreamSocket & socket, AddrIn const & local, AddrIn const & remote)
+HttpConnection::HttpConnection(IHttpConfig & config, StreamSocket & socket, AddrIPv4 const & local, AddrIPv4 const & remote)
   : config_(config),
     socket_(std::move(socket)),
     local_(local),
@@ -61,7 +61,11 @@ HttpConnection::~HttpConnection() {
 // Process requests.
 //--------------------------------------------------------------
 
+#ifdef ZINC_WEBSOCKET
+void HttpConnection::process(WebSocket::ConnectionList & websockets) {
+#else
 void HttpConnection::process() {
+#endif
     bool keepalive;
     do {
         // Parse the request and resolve which local resource
@@ -69,24 +73,38 @@ void HttpConnection::process() {
 
         std::shared_ptr<Resource> body;
         HttpRequest request(local_, remote_, false);
-        HttpRequest::Result r = request.parse(config_, socket_);
+        HttpRequest::Result r = request.parse(socket_, config_.getTimeout(), static_cast<size_t>(config_.getLimitRequestLine()), static_cast<size_t>(config_.getLimitRequestHeaders()), static_cast<size_t>(config_.getLimitRequestBody()));
         if (r.isAborted()) {
             break;
         } else if (r.isError()) {
             keepalive = false;
             body = config_.makeErrorPage(r.getHttpStatus());
         } else {
-            keepalive = request.shouldKeepAlive();
-            if (request.getVerb().isOneOf(HttpVerb::Get | HttpVerb::Head | HttpVerb::Post | HttpVerb::Put | HttpVerb::Delete)) {
-                body = config_.resolve(request.getURI());
+#ifdef ZINC_WEBSOCKET
+            HttpRequest::Result ws = request.isWebSocketUpgrade();
+            if (ws.isError()) {
+                keepalive = false;
+                body = config_.makeErrorPage(ws.getHttpStatus());
+            } else if (ws.isOK()) {
+                LOG_INFO("Switching protocol on socket " << socket_);
+                websockets.add(config_, std::move(socket_)).handshake(request);
+                return;
             } else {
-                body = config_.makeErrorPage(405);
+#endif
+                keepalive = request.shouldKeepAlive();
+                if (request.getVerb().isOneOf(HttpVerb::Get | HttpVerb::Head | HttpVerb::Post | HttpVerb::Put | HttpVerb::Delete)) {
+                    body = config_.resolve(request.getURI());
+                } else {
+                    body = config_.makeErrorPage(405);
+                }
+#ifdef ZINC_WEBSOCKET
             }
+#endif
         }
 
         // Build and transmit a response.
 
-        HttpResponse response(config_, request, socket_, keepalive);
+        HttpResponse response(config_, request, socket_, keepalive ? HttpResponse::Connection::KeepAlive : HttpResponse::Connection::Close);
         LOG_INFO_SEND("Replying: " << body->getDescription());
         body->transmit(response, request);
 
@@ -109,14 +127,9 @@ void HttpConnection::process() {
 // Constructor. Start the pool of worker threads.
 //--------------------------------------------------------------
 
-HttpServer::HttpServer(IConfig & config)
+HttpServer::HttpServer(IHttpConfig & config)
   : config_(config),
-    socket_(),
     stop_(false),
-    workers_(),
-    connections_(),
-    condition_(),
-    mutex_(),
     idle_(0) {
 
     LOG_TRACE("Init HttpServer");
@@ -141,7 +154,11 @@ HttpServer::HttpServer(IConfig & config)
                     this->connections_.pop();
                     this->idle_--;
                 }
+#ifdef ZINC_WEBSOCKET
+                connection->process(websockets_);
+#else
                 connection->process();
+#endif
             }
         });
     }
@@ -188,7 +205,7 @@ int HttpServer::startup() {
     LOG_INFO("Server is up and listening");
 
     while (socket_) {
-        AddrIn remote;
+        AddrIPv4 remote;
         StreamSocket client = socket_.accept(&remote);
         if (client) {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -201,6 +218,9 @@ int HttpServer::startup() {
                 client.close();
             }
         }
+#ifdef ZINC_WEBSOCKET
+        websockets_.purge();
+#endif
     }
 
     LOG_INFO("Server is going down");

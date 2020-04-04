@@ -21,18 +21,19 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __HTTP_SERVER_H__
-#define __HTTP_SERVER_H__
+#ifndef HTTP_SERVER_H
+#define HTTP_SERVER_H
 
+#include <list>
 #include <vector>
 #include <queue>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 
+#include "ihttpconfig.h"
 #include "stream_socket.h"
-
-class IConfig;
+#include "websocket.h"
 
 //--------------------------------------------------------------
 // An HTTP connection with a client.
@@ -40,16 +41,20 @@ class IConfig;
 
 class HttpConnection {
 public:
-    HttpConnection(IConfig & config, StreamSocket & socket, AddrIn const & local, AddrIn const & remote);
+    HttpConnection(IHttpConfig & config, StreamSocket & socket, AddrIPv4 const & local, AddrIPv4 const & remote);
     ~HttpConnection();
 
+#ifdef ZINC_WEBSOCKET
+    void process(WebSocket::ConnectionList & websockets);
+#else
     void process();
+#endif
 
 private:
-    IConfig &       config_;    // server configuration
+    IHttpConfig &   config_;    // server configuration
     StreamSocket    socket_;    // connection with the client
-    AddrIn          local_;     // local address (i.e. the server)
-    AddrIn          remote_;    // remote address (i.e. the client)
+    AddrIPv4        local_;     // local address (i.e. the server)
+    AddrIPv4        remote_;    // remote address (i.e. the client)
 };
 
 //--------------------------------------------------------------
@@ -58,14 +63,18 @@ private:
 
 class HttpServer {
 public:
-	HttpServer(IConfig & config);
-	~HttpServer();
+    HttpServer(IHttpConfig & config);
+    ~HttpServer();
 
-	int		startup();
-	void	stop();
+    int     startup();
+    void    stop();
+
+#ifdef ZINC_WEBSOCKET
+    void    broadcast(WebSocket::Frame const & frame)       { websockets_.broadcast(frame); }
+#endif
 
 private:
-    IConfig &                                   config_;            // server configuration
+    IHttpConfig &                               config_;            // server configuration
     StreamSocket                                socket_;            // server socket
     bool                                        stop_;              // if true, shutdown in progress
     std::vector<std::thread>                    workers_;           // list of worker threads
@@ -73,6 +82,9 @@ private:
     std::condition_variable                     condition_;         // thread synchronization
     std::mutex                                  mutex_;             // thread synchronization
     int                                         idle_;              // number of idle threads
+#ifdef ZINC_WEBSOCKET
+    WebSocket::ConnectionList                   websockets_;        // active websocket connections
+#endif
 };
 
 //--------------------------------------------------------------

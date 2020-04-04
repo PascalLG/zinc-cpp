@@ -158,9 +158,15 @@ Configuration::Configuration()
     // scripts with default values, and rebuild the extension
     // map.
 
+#ifdef _WIN32
+    cgis_.emplace_back("PHP",    "php php7", "php-cgi.exe",  "" );
+    cgis_.emplace_back("Python", "py",       "python.exe",   "" );
+#else
     cgis_.emplace_back("PHP",    "php php7", "php-cgi",  "" );
     cgis_.emplace_back("Python", "py",       "python",   "" );
-    buildExtentionMap();
+#endif
+
+    buildExtensionMap();
 }
 
 //--------------------------------------------------------------
@@ -168,16 +174,20 @@ Configuration::Configuration()
 // a given file is a script and which interpreter to spawn.
 //--------------------------------------------------------------
 
-void Configuration::buildExtentionMap() {
+void Configuration::buildExtensionMap() {
     extensions_.clear();
     for (CGI & cgi: cgis_) {
+#ifndef UNIT_TESTING
         if (!cgi.at(optInterpreter).getStringValue().empty()) {
+#endif
             string::split(cgi.at(optExtensions).getStringValue(), ' ', 0, string::trim_both, [this, &cgi] (std::string & ext) {
                 string::lowercase(ext);
                 this->extensions_.emplace(ext, cgi);
                 return true;
             });
+#ifndef UNIT_TESTING
         }
+#endif
     }
 }
 
@@ -317,7 +327,7 @@ bool Configuration::load(std::istream & fs, fs::filepath const & filename) {
         }
     }
 
-    buildExtentionMap();
+    buildExtensionMap();
     return ok;
 }
 

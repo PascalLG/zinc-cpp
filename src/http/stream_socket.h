@@ -21,8 +21,8 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __STREAM_SOCKET_H__
-#define __STREAM_SOCKET_H__
+#ifndef STREAM_SOCKET_H
+#define STREAM_SOCKET_H
 
 #include <ostream>
 #include <mutex>
@@ -35,17 +35,24 @@
 // Internet Address.
 //--------------------------------------------------------------
 
-class AddrIn {
+class AddrIPv4 {
 public:
-    AddrIn() : addr_(0), port_(0)                                     {   }
-    AddrIn(uint32_t addr, uint16_t port) : addr_(addr), port_(port)   {   }
+    AddrIPv4() : addr_(0), port_(0)                                                 {   }
+    AddrIPv4(uint32_t addr, uint16_t port) : addr_(addr), port_(port)               {   }
+    AddrIPv4(AddrIPv4 const & other) : addr_(other.addr_), port_(other.port_)       {   }
+    AddrIPv4(std::string const & name, int port);
 
-    std::string     getAddress() const;
-    std::string     getPort() const;
+    AddrIPv4 & operator = (AddrIPv4 const & other)                                  { addr_ = other.addr_; port_ = other.port_; return *this;   }
+    operator bool() const                                                           { return addr_ != 0 && port_ != 0;                          }
+
+    std::string     getAddressString() const;
+    std::string     getPortString() const;
     std::string     getNameInfo() const;
 
-    friend std::ostream & operator << (std::ostream & os, AddrIn const & rhs);
-    friend bool           operator == (AddrIn const & lhs, AddrIn const & rhs)          { return lhs.addr_ == rhs.addr_ && lhs.port_ == rhs.port_; }
+    void            fillAddrIn(void * addrin, size_t length) const;
+
+    friend std::ostream & operator << (std::ostream & os, AddrIPv4 const & rhs);
+    friend bool           operator == (AddrIPv4 const & lhs, AddrIPv4 const & rhs)  { return lhs.addr_ == rhs.addr_ && lhs.port_ == rhs.port_; }
 
 private:
     uint32_t    addr_;
@@ -53,8 +60,8 @@ private:
 
     class Resolver {
     public:
-        Resolver();
-        std::string resolve(AddrIn const & addr);
+        Resolver() = default;
+        std::string resolve(AddrIPv4 const & addr);
 
     private:
         std::mutex  mutex_;
@@ -70,23 +77,25 @@ public:
     StreamSocket();
     StreamSocket(StreamSocket const &)                   = delete;
     StreamSocket(StreamSocket && other);
-    virtual ~StreamSocket();
+    virtual ~StreamSocket() override;
 
     StreamSocket &  operator = (StreamSocket const &)    = delete;
     StreamSocket &  operator = (StreamSocket && other);
 
-    operator bool() const                                                               { return socket_ >= 0;      }
-    friend std::ostream & operator << (std::ostream & os, StreamSocket const & rhs)     { return os << rhs.socket_; }
+    operator bool() const                                                               { return IS_SOCKET_VALID(socket_);  }
+    friend std::ostream & operator << (std::ostream & os, StreamSocket const & rhs)     { return os << rhs.socket_;         }
 
     bool            create();
-    bool            bind(uint16_t port);
+    bool            connect(AddrIPv4 const & server);
+    bool            bind(int port);
     bool            listen();
-    StreamSocket    accept(AddrIn * addr);
-    AddrIn          getLocalAddress();
+    StreamSocket    accept(AddrIPv4 * addr);
+    AddrIPv4        getLocalAddress();
+    int             select(std::chrono::milliseconds timeout);
     void            close();
 
-    size_t          read(void * data, size_t length, int timeout, bool exact) override;
-    void            write(void const * data, size_t length) override;
+    size_t          read(void * data, size_t length, std::chrono::milliseconds timeout, bool exact) override;
+    bool            write(void const * data, size_t length) override;
 
     static void     shutdown(bool shutdown);
 

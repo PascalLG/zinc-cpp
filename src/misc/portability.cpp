@@ -29,9 +29,9 @@
 
 #ifdef _WIN32
 
-time_t FileTimeToPOSIX(FILETIME & ft) {
-    LARGE_INTEGER date, adjust;
-    date.HighPart = ft.dwHighDateTime;
+time_t FileTimeToPOSIX(FILETIME const & ft) {
+    LARGE_INTEGER date;
+    date.HighPart = static_cast<LONG>(ft.dwHighDateTime);
     date.LowPart = ft.dwLowDateTime;
     date.QuadPart -= 11644473600000ll * 10000ll;
     return static_cast<time_t>(date.QuadPart / 10000000ll);
@@ -45,9 +45,12 @@ time_t FileTimeToPOSIX(FILETIME & ft) {
 
 #ifdef _WIN32
 
-std::string WideStringToUTF8(WCHAR * pstr) {
-
-    return std::string();
+std::string WideStringToUTF8(WCHAR const * pstr) {
+    int len = static_cast<int>(wcslen(pstr));
+    int size = WideCharToMultiByte(CP_UTF8, 0, pstr, len, nullptr, 0, nullptr, nullptr);
+    std::string res(static_cast<size_t>(size), 0);
+    WideCharToMultiByte(CP_UTF8, 0, pstr, len, &res.front(), size, nullptr, nullptr);
+    return res;
 }
 
 #endif
@@ -56,9 +59,12 @@ std::string WideStringToUTF8(WCHAR * pstr) {
 
 #ifdef _WIN32
 
-std::u16string UTF8ToWideString(std::string const & str) {
-
-    return std::u16string();
+std::wstring UTF8ToWideString(std::string const & str) {
+    int len = static_cast<int>(str.size());
+    int size = MultiByteToWideChar(CP_UTF8, 0, &str.front(), len, nullptr, 0);
+    std::wstring res(static_cast<size_t>(size), 0);
+    MultiByteToWideChar(CP_UTF8, 0, &str.front(), len, &res.front(), size);
+    return res;
 }
 
 #endif

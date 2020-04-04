@@ -21,6 +21,7 @@
 // THE SOFTWARE.
 //========================================================================
 
+#include "../misc/string.h"
 #include "zinc.h"
 #include "resource_page_redirection.h"
 #include "resource_redirection.h"
@@ -64,9 +65,9 @@ void ResourceRedirection::transmit(HttpResponse & response, HttpRequest const & 
         } else if (field == "server_name") {
             ret = string::encodeHtml(Zinc::getInstance().getConfiguration().getServerName());
         } else if (field == "server_addr") {
-            ret = request.getLocalAddress().getAddress();
+            ret = request.getLocalAddress().getAddressString();
         } else if (field == "server_port") {
-            ret = request.getLocalAddress().getPort();
+            ret = request.getLocalAddress().getPortString();
         } else if (field == "status") {
             ret = std::to_string(status.getStatusCode());
         } else if (field == "description") {
