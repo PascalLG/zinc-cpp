@@ -98,7 +98,7 @@ bool blob::write(void const * data, size_t length) {
         }
     }
     DWORD written;
-    return WriteFile(fd_, data, length, &written, nullptr) && written == length;
+    return WriteFile(fd_, data, static_cast<DWORD>(length), &written, nullptr) && static_cast<size_t>(written) == length;
 #else
     if (!IS_HANDLE_VALID(fd_)) {
         char fname[32] = "tmp_XXXXXX";
@@ -152,7 +152,7 @@ std::vector<uint8_t> blob::readAll() const {
         content.resize(size);
         SetFilePointer(fd_, 0, nullptr, FILE_BEGIN);
         DWORD read;
-        ReadFile(fd_, content.data(), size, &read, nullptr);
+        ReadFile(fd_, content.data(), static_cast<DWORD>(size), &read, nullptr);
     }
 #else
     if (IS_HANDLE_VALID(fd_)) {
