@@ -170,8 +170,8 @@ bool WebSocket::Frame::send(OutputStream & output, iprng & prng, bool masked) co
 // Initialize the frame content with a text message.
 //--------------------------------------------------------------
 
-void WebSocket::Frame::setTextMessage(std::string const & message) {
-    payload_.assign(message.cbegin(), message.cend());
+void WebSocket::Frame::setTextMessage(char const * message) {
+    payload_.assign(message, message + strlen(message));
     opcode_ = Text;
 }
 

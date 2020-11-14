@@ -58,7 +58,7 @@ public:
     bool receive(InputStream & input, std::chrono::milliseconds timeout);
     bool send(OutputStream & output, iprng & prng, bool masked) const;
 
-    void setTextMessage(std::string const & message);
+    void setTextMessage(char const * message);
     void setBinaryMessage(void const * message, size_t length);
     void setCloseMessage(int code);
 
