@@ -59,8 +59,10 @@ static std::initializer_list<Encoding> const encodingTable = {
 //--------------------------------------------------------------
 
 std::string getCompressionName(compression::mode mode) {
-    auto got = std::find_if(encodingTable.begin(), encodingTable.end(), [=] (Encoding const & x) { return x.mode == mode; });
-    return std::string((got != encodingTable.end()) ? got->name : "");
+    auto got = std::find_if(encodingTable.begin(), encodingTable.end(), [mode] (Encoding const & x) {
+        return x.mode == mode;
+    });
+    return std::string((got != encodingTable.end()) ? got->name : std::string());
 }
 
 //--------------------------------------------------------------
@@ -89,9 +91,9 @@ compression::set parseAcceptedEncodings(std::string const & str) {
 // accepted encodings and the mimetype of the data to transfer.
 //--------------------------------------------------------------
 
-compression::mode selectCompressionMode(compression::set accepted, std::string const & mimetype) {
+compression::mode selectCompressionMode(compression::set accepted, Mime const & mimetype) {
     if (!accepted.empty()) {
-        compression::mode favorite = getFavoriteCompressionMode(mimetype);
+        compression::mode favorite = mimetype.getFavoriteCompressionMode();
 
         if (favorite != compression::none) {
             std::initializer_list<compression::mode> favorites = {
@@ -100,7 +102,9 @@ compression::mode selectCompressionMode(compression::set accepted, std::string c
                 compression::zlib_gzip,         // then gzip
                 compression::zlib_deflate       // then end with the worst mode
             };
-            auto got = std::find_if(favorites.begin(), favorites.end(), [&] (compression::mode m) { return accepted.contains(m); });
+            auto got = std::find_if(favorites.begin(), favorites.end(), [&] (compression::mode m) {
+                return accepted.contains(m);
+            });
             if (got != favorites.end()) {
                 return *got;
             }

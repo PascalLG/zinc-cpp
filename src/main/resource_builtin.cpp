@@ -81,7 +81,7 @@ void ResourceBuiltIn::transmit(HttpResponse & response, HttpRequest const & requ
 
     date ifModifiedSince = date::from_http(request.getHeaderValue(HttpHeader::IfModifiedSince));
     if (lastModified > ifModifiedSince && request.getVerb().isOneOf(HttpVerb::Get | HttpVerb::Head)) {
-        response.emitHeader(HttpHeader::ContentType, getMimeType(resource_, nullptr));
+        response.emitHeader(HttpHeader::ContentType, Mime(resource_, nullptr).toString());
         response.emitHeader(HttpHeader::ContentLength, std::to_string(length_));
         response.emitHeader(HttpHeader::LastModified, lastModified.to_http());
         response.emitHeader(HttpHeader::Expires, response.getResponseDate().add(31557600s).to_http()); // about 1 year

@@ -18,7 +18,7 @@ endif()
 #---------------------------------------------------------------
 
 set(ZINC_VERSION_MAJOR           1)
-set(ZINC_VERSION_MINOR          01)
+set(ZINC_VERSION_MINOR          02)
 set(ZINC_COMPRESSION_GZIP       ON)
 set(ZINC_COMPRESSION_DEFLATE    ON)
 set(ZINC_COMPRESSION_BROTLI     ON)

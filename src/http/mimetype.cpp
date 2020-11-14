@@ -21,6 +21,7 @@
 // THE SOFTWARE.
 //========================================================================
 
+#include <vector>
 #include <algorithm>
 
 #include "../misc/string.h"
@@ -37,7 +38,7 @@ struct MimeType {
     compression::mode   compression;   // recommended compression mode
 };
 
-static std::initializer_list<MimeType> mimeTypes = {
+static std::vector<MimeType> const mimeTypes = {
     { "aac",    "audio/aac",                                                                 compression::none              },
     { "abw",    "application/x-abiword",                                                     compression::none              },
     { "avi",    "video/x-msvideo",                                                           compression::none              },
@@ -48,23 +49,23 @@ static std::initializer_list<MimeType> mimeTypes = {
     { "css",    "text/css",                                                                  compression::brotli_text       },
     { "csv",    "text/csv",                                                                  compression::brotli_text       },
     { "doc",    "application/msword",                                                        compression::brotli_generic    },
-    { "docx",   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",   compression::none              },
-    { "eot",    "application/vnd.ms-fontobject",                                             compression::none              },
+    { "docx",   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",   compression::brotli_generic    },
+    { "eot",    "application/vnd.ms-fontobject",                                             compression::brotli_generic    },
     { "epub",   "application/epub+zip",                                                      compression::none              },
     { "gif",    "image/gif",                                                                 compression::none              },
     { "htm",    "text/html",                                                                 compression::brotli_text       },
     { "html",   "text/html",                                                                 compression::brotli_text       },
     { "ico",    "image/x-icon",                                                              compression::none              },
-    { "ics",    "text/calendar",                                                             compression::none              },
+    { "ics",    "text/calendar",                                                             compression::brotli_text       },
     { "jar",    "application/java-archive",                                                  compression::none              },
-    { "jpeg",   "image JPEG image/jpeg",                                                     compression::none              },
-    { "jpg",    "image JPEG image/jpeg",                                                     compression::none              },
+    { "jpeg",   "image/jpeg",                                                                compression::none              },
+    { "jpg",    "image/jpeg",                                                                compression::none              },
     { "js",     "application/javascript",                                                    compression::brotli_text       },
     { "json",   "application/json",                                                          compression::brotli_text       },
-    { "mid",    "audio/midi",                                                                compression::none              },
-    { "midi",   "audio/midi",                                                                compression::none              },
+    { "mid",    "audio/midi",                                                                compression::brotli_generic    },
+    { "midi",   "audio/midi",                                                                compression::brotli_generic    },
     { "mpeg",   "video/mpeg",                                                                compression::none              },
-    { "mpkg",   "application/vnd.apple.installer+xml",                                       compression::none              },
+    { "mpkg",   "application/vnd.apple.installer+xml",                                       compression::brotli_text       },
     { "odp",    "application/vnd.oasis.opendocument.presentation",                           compression::none              },
     { "ods",    "application/vnd.oasis.opendocument.spreadsheet",                            compression::none              },
     { "odt",    "application/vnd.oasis.opendocument.text",                                   compression::none              },
@@ -73,32 +74,32 @@ static std::initializer_list<MimeType> mimeTypes = {
     { "ogx",    "application/ogg",                                                           compression::none              },
     { "otf",    "font/otf",                                                                  compression::brotli_generic    },
     { "png",    "image/png",                                                                 compression::none              },
-    { "pdf",    "application/pdf",                                                           compression::none              },
-    { "ppt",    "application/vnd.ms-powerpoint",                                             compression::none              },
-    { "pptx",   "application/vnd.openxmlformats-officedocument.presentationml.presentation", compression::none              },
+    { "pdf",    "application/pdf",                                                           compression::brotli_generic    },
+    { "ppt",    "application/vnd.ms-powerpoint",                                             compression::brotli_generic    },
+    { "pptx",   "application/vnd.openxmlformats-officedocument.presentationml.presentation", compression::brotli_generic    },
     { "rar",    "application/x-rar-compressed",                                              compression::none              },
     { "rtf",    "application/rtf",                                                           compression::brotli_text       },
     { "sh",     "application/x-sh",                                                          compression::none              },
-    { "svg",    "image/svg+xml",                                                             compression::none              },
+    { "svg",    "image/svg+xml",                                                             compression::brotli_text       },
     { "swf",    "application/x-shockwave-flash",                                             compression::none              },
-    { "tar",    "application/x-tar",                                                         compression::none              },
+    { "tar",    "application/x-tar",                                                         compression::brotli_generic    },
     { "tif",    "image/tiff",                                                                compression::none              },
     { "tiff",   "image/tiff",                                                                compression::none              },
-    { "ts",     "application/typescript",                                                    compression::none              },
-    { "ttf",    "font/ttf",                                                                  compression::none              },
+    { "ts",     "application/typescript",                                                    compression::brotli_text       },
+    { "ttf",    "font/ttf",                                                                  compression::brotli_generic    },
     { "txt",    "text/plain",                                                                compression::brotli_text       },
     { "vsd",    "application/vnd.visio",                                                     compression::none              },
     { "wav",    "audio/x-wav",                                                               compression::none              },
     { "weba",   "audio/webm",                                                                compression::none              },
     { "webm",   "video/webm",                                                                compression::none              },
     { "webp",   "image/webp",                                                                compression::none              },
-    { "woff",   "font/woff",                                                                 compression::none              },
+    { "woff",   "font/woff",                                                                 compression::brotli_generic    },
     { "woff2",  "font/woff2",                                                                compression::brotli_font       },
     { "xhtml",  "application/xhtml+xml",                                                     compression::brotli_text       },
-    { "xls",    "application/vnd.ms-excel",                                                  compression::none              },
-    { "xlsx",   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",         compression::none              },
+    { "xls",    "application/vnd.ms-excel",                                                  compression::brotli_generic    },
+    { "xlsx",   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",         compression::brotli_generic    },
     { "xml",    "application/xml",                                                           compression::brotli_text       },
-    { "xul",    "application/vnd.mozilla.xul+xml",                                           compression::none              },
+    { "xul",    "application/vnd.mozilla.xul+xml",                                           compression::brotli_text       },
     { "zip",    "application/zip",                                                           compression::none              },
     { "3gp",    "video/3gpp",                                                                compression::none              },
     { "3g2",    "video/3gpp2",                                                               compression::none              },
@@ -106,45 +107,56 @@ static std::initializer_list<MimeType> mimeTypes = {
 };
 
 //========================================================================
-// MIME types related functions.
+// Mime
+//
+// Class representing a MIME type. Provide methods to build a MIME type
+// from a file extension, and to convert a MIME type to its string
+// representation.
 //========================================================================
+
+//--------------------------------------------------------------
+// Construct a MIME type from its string representation.
+//--------------------------------------------------------------
+
+Mime::Mime(std::string mimetype)
+  : mimetype_(std::move(mimetype)) {
+}
 
 //--------------------------------------------------------------
 // Determine the MIME type of a file from its extension and for 
 // text files, from its content.
 //--------------------------------------------------------------
 
-std::string getMimeType(fs::filepath const & filename, std::istream * content) {
-    std::string result;
+Mime::Mime(fs::filepath const & filename, std::istream * content) {
     std::string ext = filename.getExtension();
     if (ext.length() > 1 && ext.front() == '.') {
         string::lowercase(ext);
-        auto got = std::find_if(mimeTypes.begin(), mimeTypes.end(), [&] (MimeType const & mt) { return !ext.compare(1, std::string::npos, mt.extension); });
+        auto got = std::find_if(mimeTypes.begin(), mimeTypes.end(), [&] (MimeType const & mt) {
+            return !ext.compare(1, std::string::npos, mt.extension);
+        });
         if (got != mimeTypes.end()) {
-            result = got->mime;
+            mimetype_ = got->mime;
         }
     }
 
-    if (content != nullptr && (result.empty() || result.compare(0, 5, "text/") == 0)) {
+    if (content != nullptr && (mimetype_.empty() || mimetype_.compare(0, 5, "text/") == 0)) {
         LOG_TRACE("Guessing encoding for " << filename);
         std::string enc = guessEncoding(*content);
         if (!enc.empty()) {
             LOG_TRACE("Guessed encoding: " << enc);
-            if (result.empty()) {
-                result = "text/plain";
+            if (mimetype_.empty()) {
+                mimetype_ = "text/plain";
             }
-            result += "; charset=";
-            result += enc;
+            mimetype_ += "; charset=";
+            mimetype_ += enc;
         }
     }
 
-    if (result.empty()) {
-        result = "application/octet-stream";
+    if (mimetype_.empty()) {
+        mimetype_ = "application/octet-stream";
     }
-
-    return result;
 }
-
+  
 //--------------------------------------------------------------
 // Return the best compression mode for a given type. Basically,
 // we don't bother compressing files that are already compressed,
@@ -152,14 +164,16 @@ std::string getMimeType(fs::filepath const & filename, std::istream * content) {
 // worth it.
 //--------------------------------------------------------------
 
-compression::mode getFavoriteCompressionMode(std::string const & mimetype) {
-    size_t off = mimetype.find(';');
+compression::mode Mime::getFavoriteCompressionMode() const {
+    size_t off = mimetype_.find(';');
     if (off != std::string::npos) {
-        while (off > 0 && isblank(mimetype[off - 1])) {
+        while (off > 0 && isblank(mimetype_[off - 1])) {
             off--;
         }
     }
-    auto got = std::find_if(mimeTypes.begin(), mimeTypes.end(), [&] (MimeType const & mt) { return !mimetype.compare(0, off, mt.mime); });
+    auto got = std::find_if(mimeTypes.begin(), mimeTypes.end(), [&] (MimeType const & mt) {
+        return !mimetype_.compare(0, off, mt.mime);
+    });
     return (got != mimeTypes.end()) ? got->compression : compression::none;
 }
 

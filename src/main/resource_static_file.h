@@ -26,6 +26,7 @@
 
 #include <fstream>
 #include "../misc/filesys.h"
+#include "../http/mimetype.h"
 #include "../http/resource.h"
 
 //--------------------------------------------------------------
@@ -40,7 +41,7 @@ public:
 
 private:
     std::ifstream   fileStream_;
-    std::string     mimeType_;
+    Mime            mimeType_;
     date            lastModified_;
 };
 

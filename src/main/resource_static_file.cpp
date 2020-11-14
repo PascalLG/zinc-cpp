@@ -43,7 +43,7 @@
 ResourceStaticFile::ResourceStaticFile(fs::filepath const & filename, std::ifstream & filestream)
     : Resource("static file " + filename.getStdString()),
       fileStream_(std::move(filestream)),
-      mimeType_(getMimeType(filename, &fileStream_)),
+      mimeType_(filename, &fileStream_),
       lastModified_(filename.getModificationDate()) {
 }
 
@@ -57,7 +57,7 @@ void ResourceStaticFile::transmit(HttpResponse & response, HttpRequest const & r
         fileStream_.seekg(0, std::istream::end);
         size_t size = static_cast<size_t>(fileStream_.tellg());
 
-        response.emitHeader(HttpHeader::ContentType, mimeType_);
+        response.emitHeader(HttpHeader::ContentType, mimeType_.toString());
         response.emitHeader(HttpHeader::ContentLength, std::to_string(size));
         response.emitHeader(HttpHeader::LastModified, lastModified_.to_http());
         response.emitHeader(HttpHeader::Expires, response.getResponseDate().add(Zinc::getInstance().getConfiguration().getExpires()).to_http());

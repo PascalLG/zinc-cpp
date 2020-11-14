@@ -67,7 +67,7 @@ StreamDeflate::~StreamDeflate() {
 //--------------------------------------------------------------
 
 bool StreamDeflate::write(void const * data, size_t length) {
-    state_.avail_in = static_cast<z_uInt>(length);
+    state_.avail_in = static_cast<uInt>(length);
     state_.next_in = reinterpret_cast<unsigned char const *>(data);
     compress(Z_NO_FLUSH);
     return true;

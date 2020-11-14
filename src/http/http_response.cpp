@@ -22,6 +22,7 @@
 //========================================================================
 
 #include "../misc/string.h"
+#include "mimetype.h"
 #include "stream_chunked.h"
 #include "stream_null.h"
 #include "http_response.h"
@@ -211,7 +212,7 @@ void HttpResponse::prepareForBody() {
     if (config_.isCompressionEnabled() && !accepted.empty() && (length < 0 || length >= 16)) {
         auto got2 = headers_.find(HttpHeader::ContentType);
         if (got2 != headers_.end()) {
-            encoding_ = selectCompressionMode(accepted, got2->second);
+            encoding_ = selectCompressionMode(accepted, Mime(got2->second));
         }
     }
 

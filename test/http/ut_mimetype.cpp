@@ -248,7 +248,7 @@ TEST(MIME, guessEncoding) {
 
 TEST(MIME, getMimeType) {
     auto f1 = [] (char const * filename) {
-        return getMimeType(filename, nullptr);
+        return Mime(filename, nullptr).toString();
     };
 
     EXPECT_EQ(f1(".txt"),     "text/plain");
@@ -263,7 +263,7 @@ TEST(MIME, getMimeType) {
 
     auto f2 = [] (unsigned char const * text, size_t len) {
         std::stringstream s(std::string((char const *) text, len));
-        return getMimeType("test.html", &s);
+        return Mime("test.html", &s).toString();
     };
 
     EXPECT_EQ(f2(text_ascii,      text_ascii_length),      "text/html; charset=ascii");
@@ -280,17 +280,17 @@ TEST(MIME, getMimeType) {
 //--------------------------------------------------------------
 
 TEST(MIME, favoriteCompressionMode) {
-    EXPECT_EQ(getFavoriteCompressionMode("text/plain"),                         compression::brotli_text);
-    EXPECT_EQ(getFavoriteCompressionMode("text/plain; charset=ASCII"),          compression::brotli_text);
-    EXPECT_EQ(getFavoriteCompressionMode("text/plain ; charset=ASCII"),         compression::brotli_text);
+    EXPECT_EQ(Mime("text/plain").getFavoriteCompressionMode(),                         compression::brotli_text);
+    EXPECT_EQ(Mime("text/plain; charset=ASCII").getFavoriteCompressionMode(),          compression::brotli_text);
+    EXPECT_EQ(Mime("text/plain ; charset=ASCII").getFavoriteCompressionMode(),         compression::brotli_text);
 
-    EXPECT_EQ(getFavoriteCompressionMode("application/zip"),                    compression::none);
-    EXPECT_EQ(getFavoriteCompressionMode("application/zip; charset=UTF-16LE"),  compression::none);
-    EXPECT_EQ(getFavoriteCompressionMode("application/zip ; charset=UTF-16LE"), compression::none);
+    EXPECT_EQ(Mime("application/zip").getFavoriteCompressionMode(),                    compression::none);
+    EXPECT_EQ(Mime("application/zip; charset=UTF-16LE").getFavoriteCompressionMode(),  compression::none);
+    EXPECT_EQ(Mime("application/zip ; charset=UTF-16LE").getFavoriteCompressionMode(), compression::none);
 
-    EXPECT_EQ(getFavoriteCompressionMode("unknown/unknown"),                    compression::none);
-    EXPECT_EQ(getFavoriteCompressionMode("unknown/unknown; charset=UTF-8"),     compression::none);
-    EXPECT_EQ(getFavoriteCompressionMode("unknown/unknown ; charset=UTF-8"),    compression::none);
+    EXPECT_EQ(Mime("unknown/unknown").getFavoriteCompressionMode(),                    compression::none);
+    EXPECT_EQ(Mime("unknown/unknown; charset=UTF-8").getFavoriteCompressionMode(),     compression::none);
+    EXPECT_EQ(Mime("unknown/unknown ; charset=UTF-8").getFavoriteCompressionMode(),    compression::none);
 }
 
 //========================================================================

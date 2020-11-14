@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "misc/logger.h"
+#include "http/mimetype.h"
 #include "http/compression.h"
 #include "http/stream_compress.h"
 
@@ -75,16 +76,16 @@ TEST(Compression, parseAcceptedEncodings) {
 
 TEST(Compression, selectCompressionMode) {
 #if defined(ZINC_COMPRESSION_GZIP) && defined(ZINC_COMPRESSION_BROTLI)
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, br"),      "unknown/unknown"), compression::none);
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, br"),      "text/plain"),      compression::brotli_text);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, br"),      Mime("unknown/unknown")), compression::none);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, br"),      Mime("text/plain")),      compression::brotli_text);
 #endif
 #if defined(ZINC_COMPRESSION_GZIP) && defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, deflate"), "text/plain"),      compression::zlib_gzip);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("gzip, deflate"), Mime("text/plain")),      compression::zlib_gzip);
 #endif
 #if defined(ZINC_COMPRESSION_DEFLATE)
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("deflate"),       "text/plain"),      compression::zlib_deflate);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings("deflate"),       Mime("text/plain")),      compression::zlib_deflate);
 #endif
-    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings(""),              "text/plain"),      compression::none);
+    EXPECT_EQ(selectCompressionMode(parseAcceptedEncodings(""),              Mime("text/plain")),      compression::none);
 }
 
 //--------------------------------------------------------------

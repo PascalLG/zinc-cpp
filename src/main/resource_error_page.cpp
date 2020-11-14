@@ -49,7 +49,7 @@ ResourceErrorPage::ResourceErrorPage(HttpStatus status)
 
 void ResourceErrorPage::transmit(HttpResponse & response, HttpRequest const & request) {
     response.setHttpStatus(status_);
-    response.emitHeader(HttpHeader::ContentType, "text/html; charset=UTF-8");
+    response.emitHeader(HttpHeader::ContentType, "text/html; charset=utf-8");
     response.emitEol();
 
     response.emitPage(reinterpret_cast<char const *>(page_error_html), [&] (std::string const & field) {

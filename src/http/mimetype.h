@@ -31,20 +31,32 @@
 #include "compression.h"
 
 //--------------------------------------------------------------
-// MIME types related functions.
+// MIME type.
 //--------------------------------------------------------------
 
-std::string         getMimeType(fs::filepath const & filename, std::istream * content);
-compression::mode   getFavoriteCompressionMode(std::string const & mimetype);
+class Mime {
+public:
+    explicit Mime(std::string mimetype);
+    Mime(fs::filepath const & filename, std::istream * content);
+    Mime(Mime const & other) = default;
+    Mime & operator = (Mime const & other) = default;
+
+    std::string         toString() const    { return mimetype_; }
+    compression::mode   getFavoriteCompressionMode() const;
+
+private:
+    std::string     mimetype_;
+};
 
 //--------------------------------------------------------------
-// Text functions. (Used internally, public for unit testing.)
+// Text functions. (Used internally but made public for unit
+// testing purposes.)
 //--------------------------------------------------------------
 
-std::string         guessEncoding(std::istream & is);
-bool                isUTF8(char const * text, size_t length, bool * ascii);
-bool                isUTF16(char const * text, size_t length, bool bigendian);
-bool                isValidUnicodeChar(uint32_t ch);
+std::string guessEncoding(std::istream & is);
+bool        isUTF8(char const * text, size_t length, bool * ascii);
+bool        isUTF16(char const * text, size_t length, bool bigendian);
+bool        isValidUnicodeChar(uint32_t ch);
 
 //--------------------------------------------------------------
 

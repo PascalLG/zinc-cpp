@@ -29,6 +29,8 @@
 
 #include "stream.h"
 
+class Mime;
+
 //--------------------------------------------------------------
 // HTTP compression handling.
 //--------------------------------------------------------------
@@ -65,7 +67,7 @@ namespace compression {
 
 std::string                     getCompressionName(compression::mode mode);
 compression::set                parseAcceptedEncodings(std::string const & str);
-compression::mode               selectCompressionMode(compression::set accepted, std::string const & mimetype);
+compression::mode               selectCompressionMode(compression::set accepted, Mime const & mimetype);
 std::unique_ptr<OutputStream>   makeStreamTransformer(compression::mode mode, long length);
 
 //--------------------------------------------------------------
