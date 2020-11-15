@@ -43,7 +43,7 @@ TEST(Config, DefaultValues) {
     };
 
     EXPECT_EQ(cfg.getListeningPort(),       8080                );
-    EXPECT_EQ(cfg.getLimitThreads(),        8                   );
+    EXPECT_EQ(cfg.getLimitThreads(),        32                  );
     EXPECT_EQ(cfg.getLimitRequestLine(),    2048                );
     EXPECT_EQ(cfg.getLimitRequestHeaders(), 8192                );
     EXPECT_EQ(cfg.getLimitRequestBody(),    32 * 1024 * 1024    );
@@ -98,7 +98,7 @@ TEST(Config, Save) {
         "###############################",
         "[Server]",
         "Listen = 8080",
-        "LimitThreads = 8",
+        "LimitThreads = 32",
         "LimitRequestLine = 2048",
         "LimitRequestHeaders = 8192",
         "LimitRequestBody = 33554432",

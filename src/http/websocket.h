@@ -28,6 +28,8 @@
 
 #include <string>
 #include <vector>
+#include <thread>
+#include <list>
 
 #include "../misc/prng.h"
 #include "ihttpconfig.h"

@@ -82,6 +82,8 @@ set(SOURCES_APP
     src/http/stream_null.h
     src/http/stream_socket.cpp
     src/http/stream_socket.h
+    src/http/thread_pool.cpp
+    src/http/thread_pool.h
     src/http/uri.cpp
     src/http/uri.h
     src/http/websocket.cpp
@@ -200,6 +202,7 @@ set(SOURCES_TEST
     test/http/ut_mimetype.cpp
     test/http/ut_stream_chunked.cpp
     test/http/ut_stream_compress.cpp
+    test/http/ut_thread_pool.cpp
     test/http/ut_uri.cpp
     test/http/ut_websocket.cpp
     test/main/ut_configuration.cpp

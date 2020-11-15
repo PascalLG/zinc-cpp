@@ -21,41 +21,45 @@
 // THE SOFTWARE.
 //========================================================================
 
-#ifndef __ZINC_H__
-#define __ZINC_H__
+#ifndef THREAD_POOL_H
+#define THREAD_POOL_H
 
-#include "../http/ihttpconfig.h"
-#include "configuration.h"
+#include <queue>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 //--------------------------------------------------------------
-// Zinc server configuration
+
 //--------------------------------------------------------------
 
-class Zinc : public IHttpConfig {
+class ThreadPool {
 public:
-    Configuration & getConfiguration()                              { return configuration_;                           }
-    static Zinc &   getInstance();
+    ThreadPool();
+    virtual ~ThreadPool();
 
-    int                     getListeningPort() override             { return configuration_.getListeningPort();        }
-    int                     getLimitThreads() override              { return configuration_.getLimitThreads();         }
-    int                     getLimitRequestLine() override          { return configuration_.getLimitRequestLine();     }
-    int                     getLimitRequestHeaders() override       { return configuration_.getLimitRequestHeaders();  }
-    int                     getLimitRequestBody() override          { return configuration_.getLimitRequestBody();     }
-    std::chrono::seconds    getTimeout() override                   { return configuration_.getTimeout();              }
-    bool                    isCompressionEnabled() override         { return configuration_.isCompressionEnabled();    }
-    std::string             getVersionString() override;
+    class Task {
+    public:
+        virtual ~Task() = default;
 
-    std::shared_ptr<Resource>   resolve(URI const & uri) override;
-    std::shared_ptr<Resource>   makeErrorPage(HttpStatus status) override;
+        virtual void run(int no) = 0;
+    };
 
-#ifdef ZINC_WEBSOCKET
-    void    handleMessage(WebSocket::Connection & socket, WebSocket::Frame & frame) override;
-#endif
+    bool    addTask(std::unique_ptr<Task> obj, size_t limit);
+    void    stopAll();
+
+    size_t  getThreadCount() const          { return workers_.size();               }
+    size_t  getIdleThreadCount() const      { return static_cast<size_t>(idle_);    }
 
 private:
-    Zinc();
+    std::queue<std::unique_ptr<Task>>   tasks_;         // queue of tasks waiting to be processed
+    std::vector<std::thread>            workers_;       // array of worker threads
+    std::condition_variable             condition_;     // thread synchronization
+    std::mutex                          mutex_;         // thread synchronization
+    int                                 idle_;          // number of currently idle threads
+    bool                                stop_;          // shutdown request
 
-    Configuration configuration_; 
+    void    worker(int no);
 };
 
 //--------------------------------------------------------------

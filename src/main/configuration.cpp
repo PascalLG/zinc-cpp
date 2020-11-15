@@ -141,7 +141,7 @@ Configuration::Configuration()
 
     general_.setContent({
         { optListen,                8080,                   [] (Variant & x) { return x.getIntegerValue() >= 1024 && x.getIntegerValue() <= 65535; }    },
-        { optLimitThreads,          8,                      [] (Variant & x) { return x.getIntegerValue() > 0 && x.getIntegerValue() < 32; }            },
+        { optLimitThreads,          32,                     [] (Variant & x) { return x.getIntegerValue() > 0 && x.getIntegerValue() < 128; }           },
         { optLimitRequestLine,      2048,                   [] (Variant & x) { return x.getIntegerValue() >= 256 && x.getIntegerValue() <= 655535; }    },
         { optLimitRequestHeaders,   8192,                   [] (Variant & x) { return x.getIntegerValue() >= 256 && x.getIntegerValue() <= 655535; }    },
         { optLimitRequestBody,      32 * 1024 * 1024,       [] (Variant & x) { return x.getIntegerValue() > 0; }                                        },

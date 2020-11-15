@@ -81,7 +81,7 @@ TEST(WebSocket, TextFrameOut) {
         HexDump os;
         FakePRNG prng;
         WebSocket::Frame frame;
-        frame.setTextMessage(text);
+        frame.setTextMessage(text.c_str());
         frame.send(os, prng, masked);
         return os.getHexContent(24);
     };

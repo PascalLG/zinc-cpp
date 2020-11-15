@@ -24,38 +24,10 @@
 #ifndef HTTP_SERVER_H
 #define HTTP_SERVER_H
 
-#include <list>
-#include <vector>
-#include <queue>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-
 #include "ihttpconfig.h"
+#include "thread_pool.h"
 #include "stream_socket.h"
 #include "websocket.h"
-
-//--------------------------------------------------------------
-// An HTTP connection with a client.
-//--------------------------------------------------------------
-
-class HttpConnection {
-public:
-    HttpConnection(IHttpConfig & config, StreamSocket & socket, AddrIPv4 const & local, AddrIPv4 const & remote);
-    ~HttpConnection();
-
-#ifdef ZINC_WEBSOCKET
-    void process(WebSocket::ConnectionList & websockets);
-#else
-    void process();
-#endif
-
-private:
-    IHttpConfig &   config_;    // server configuration
-    StreamSocket    socket_;    // connection with the client
-    AddrIPv4        local_;     // local address (i.e. the server)
-    AddrIPv4        remote_;    // remote address (i.e. the client)
-};
 
 //--------------------------------------------------------------
 // The HTTP server.
@@ -74,17 +46,26 @@ public:
 #endif
 
 private:
-    IHttpConfig &                               config_;            // server configuration
-    StreamSocket                                socket_;            // server socket
-    bool                                        stop_;              // if true, shutdown in progress
-    std::vector<std::thread>                    workers_;           // list of worker threads
-    std::queue<std::unique_ptr<HttpConnection>> connections_;       // queue of active connections waiting to be processed
-    std::condition_variable                     condition_;         // thread synchronization
-    std::mutex                                  mutex_;             // thread synchronization
-    int                                         idle_;              // number of idle threads
+    IHttpConfig &               config_;        // server configuration
+    StreamSocket                socket_;        // server socket
+    ThreadPool                  pool_;          // thread pool to process queries    
 #ifdef ZINC_WEBSOCKET
-    WebSocket::ConnectionList                   websockets_;        // active websocket connections
+    WebSocket::ConnectionList   websockets_;    // active websocket connections
 #endif
+
+    class Connection : public ThreadPool::Task {
+    public:
+        Connection(HttpServer & server, StreamSocket & socket, AddrIPv4 const & local, AddrIPv4 const & remote);
+        ~Connection();
+
+        void run(int no) override;
+
+    private:
+        HttpServer &    server_;    // server
+        StreamSocket    socket_;    // connection with the client
+        AddrIPv4        local_;     // local address (i.e. the server)
+        AddrIPv4        remote_;    // remote address (i.e. the client)
+    };
 };
 
 //--------------------------------------------------------------
