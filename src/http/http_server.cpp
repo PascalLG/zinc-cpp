@@ -85,7 +85,7 @@ int HttpServer::startup() {
     while (socket_) {
         AddrIPv4 remote;
         StreamSocket client = socket_.accept(&remote);
-        if (client) {
+        if (client && config_.acceptConnection(remote)) {
             LOG_INFO("Accepting connection on socket " << client << " from " << remote);
             auto task = std::make_unique<Connection>(*this, client, client.getLocalAddress(), remote);
             if (!pool_.addTask(std::move(task), config_.getLimitThreads())) {

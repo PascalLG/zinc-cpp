@@ -30,6 +30,7 @@
 
 class HttpStatus;   // forward declarations: we cannot include the relevant headers here
 class Resource;     // because of circular dependencies
+class AddrIPv4;
 class URI;
 
 #ifdef ZINC_WEBSOCKET
@@ -45,20 +46,21 @@ class IHttpConfig {
 public:
     virtual ~IHttpConfig() = default;
 
-    virtual std::shared_ptr<Resource>   resolve(URI const & uri)            = 0;
-    virtual std::shared_ptr<Resource>   makeErrorPage(HttpStatus status)    = 0;
+    virtual std::shared_ptr<Resource>   resolve(URI const & uri)                    = 0;
+    virtual std::shared_ptr<Resource>   makeErrorPage(HttpStatus status)            = 0;
+    virtual bool                        acceptConnection(AddrIPv4 const & remote)   = 0;
 
-    virtual int                         getListeningPort()                  = 0;
-    virtual int                         getLimitThreads()                   = 0;
-    virtual int                         getLimitRequestLine()               = 0;
-    virtual int                         getLimitRequestHeaders()            = 0;
-    virtual int                         getLimitRequestBody()               = 0;
-    virtual std::chrono::seconds        getTimeout()                        = 0;
-    virtual bool                        isCompressionEnabled()              = 0;
-    virtual std::string                 getVersionString()                  = 0;
+    virtual int                         getListeningPort()                          = 0;
+    virtual int                         getLimitThreads()                           = 0;
+    virtual int                         getLimitRequestLine()                       = 0;
+    virtual int                         getLimitRequestHeaders()                    = 0;
+    virtual int                         getLimitRequestBody()                       = 0;
+    virtual std::chrono::seconds        getTimeout()                                = 0;
+    virtual bool                        isCompressionEnabled()                      = 0;
+    virtual std::string                 getVersionString()                          = 0;
 
 #ifdef ZINC_WEBSOCKET
-    virtual void    handleMessage(WebSocket::Connection & socket, WebSocket::Frame & frame)   = 0;
+    virtual void                        handleMessage(WebSocket::Connection & socket, WebSocket::Frame & frame)   = 0;
 #endif
 };
 

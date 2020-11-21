@@ -47,6 +47,7 @@ public:
 
     std::shared_ptr<Resource>   resolve(URI const & uri) override;
     std::shared_ptr<Resource>   makeErrorPage(HttpStatus status) override;
+    bool                        acceptConnection(AddrIPv4 const & remote) override;
 
 #ifdef ZINC_WEBSOCKET
     void    handleMessage(WebSocket::Connection & socket, WebSocket::Frame & frame) override;

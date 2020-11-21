@@ -160,6 +160,15 @@ std::shared_ptr<Resource> Zinc::makeErrorPage(HttpStatus status) {
 }
 
 //--------------------------------------------------------------
+// Indicate if the given connection request must be accepted
+// or not.
+//--------------------------------------------------------------
+
+bool Zinc::acceptConnection(AddrIPv4 const & remote) {
+    return true;
+}
+
+//--------------------------------------------------------------
 // Handle a websocket message. (Not used.)
 //--------------------------------------------------------------
 
